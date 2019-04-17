@@ -15,6 +15,8 @@ namespace Kafkaesque.Tests
                 .WriteTo.Console()
                 .MinimumLevel.Verbose()
                 .CreateLogger();
+
+            AppDomain.CurrentDomain.DomainUnload += (o, ea) => Log.CloseAndFlush();
         }
 
         protected CancellationToken CancelAfter(TimeSpan delay)

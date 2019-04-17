@@ -24,31 +24,43 @@ namespace Kafkaesque
         FileStream _lockFileHandle;
         bool _disposed;
 
-        internal LogWriter(string directoryPath)
+        internal LogWriter(string directoryPath, CancellationToken cancellationToken)
         {
-            AcquireLockFile(directoryPath);
-
             _logger = Log.ForContext<LogWriter>().ForContext("dir", directoryPath);
+
+            AcquireLockFile(directoryPath, cancellationToken);
 
             Task.Run(async () => await Run(directoryPath));
         }
 
-        void AcquireLockFile(string directoryPath)
+        void AcquireLockFile(string directoryPath, CancellationToken cancellationToken)
         {
             var stopwatch = Stopwatch.StartNew();
             var lockFilePath = Path.Combine(directoryPath, "kafkaesque.lockfile");
-            var timeout = TimeSpan.FromSeconds(5);
+            var timeout = TimeSpan.FromSeconds(20);
+            var lockFileTimeoutMessageLogged = false;
+
+            _logger.Verbose("Acquiring lock file {lockFilePath}", lockFilePath);
 
             while (stopwatch.Elapsed < timeout)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 try
                 {
                     _lockFileHandle = File.Open(lockFilePath, FileMode.OpenOrCreate);
+                    _logger.Verbose("Lock file successfully acquired");
                     return;
                 }
                 catch
                 {
                     Thread.Sleep(200);
+
+                    if (stopwatch.Elapsed <= TimeSpan.FromSeconds(1) || lockFileTimeoutMessageLogged) continue;
+
+                    _logger.Verbose("Will wait up to {lockFileTimeout} for lock file to be acquired", timeout);
+                    
+                    lockFileTimeoutMessageLogged = true;
                 }
             }
 

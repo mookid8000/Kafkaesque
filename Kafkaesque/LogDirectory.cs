@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 
 namespace Kafkaesque
 {
@@ -17,7 +18,7 @@ namespace Kafkaesque
                 {
                     Directory.CreateDirectory(directoryPath);
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     if (Directory.Exists(directoryPath)) return;
 
@@ -26,7 +27,7 @@ namespace Kafkaesque
             }
         }
 
-        public LogWriter GetWriter() => new LogWriter(_directoryPath);
+        public LogWriter GetWriter(CancellationToken cancellationToken = default(CancellationToken)) => new LogWriter(_directoryPath, cancellationToken);
 
         public LogReader GetReader() => new LogReader(_directoryPath);
     }
