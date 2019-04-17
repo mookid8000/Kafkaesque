@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -20,13 +21,38 @@ namespace Kafkaesque
         readonly ILogger _logger;
 
         StreamWriter _currentWriter;
+        FileStream _lockFileHandle;
         bool _disposed;
 
         internal LogWriter(string directoryPath)
         {
+            AcquireLockFile(directoryPath);
+
             _logger = Log.ForContext<LogWriter>().ForContext("dir", directoryPath);
 
             Task.Run(async () => await Run(directoryPath));
+        }
+
+        void AcquireLockFile(string directoryPath)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var lockFilePath = Path.Combine(directoryPath, "kafkaesque.lockfile");
+            var timeout = TimeSpan.FromSeconds(5);
+
+            while (stopwatch.Elapsed < timeout)
+            {
+                try
+                {
+                    _lockFileHandle = File.Open(lockFilePath, FileMode.OpenOrCreate);
+                    return;
+                }
+                catch
+                {
+                    Thread.Sleep(200);
+                }
+            }
+
+            throw new IOException($"Could not acquire lock file '{lockFilePath}' within {timeout} timeout");
         }
 
         public Task WriteAsync(byte[] bytes, CancellationToken cancellationToken = default(CancellationToken))
@@ -129,7 +155,9 @@ namespace Kafkaesque
             }
             finally
             {
-                _logger.Information("Writer worker loop  stopped");
+                _currentWriter?.Dispose();
+
+                _logger.Information("Writer worker loop stopped");
 
                 _workerLoopExited.Set();
             }
@@ -141,6 +169,7 @@ namespace Kafkaesque
 
             try
             {
+                using (_lockFileHandle)
                 using (_cancellationTokenSource)
                 using (_workerLoopExited)
                 {

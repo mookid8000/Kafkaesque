@@ -1,7 +1,9 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using Serilog;
 using Testy;
+using Testy.Files;
 
 namespace Kafkaesque.Tests
 {
@@ -21,5 +23,7 @@ namespace Kafkaesque.Tests
             cancellationTokenSource.CancelAfter(delay);
             return cancellationTokenSource.Token;
         }
+
+        protected string GetLogDirectoryPath() => Path.Combine(Using(new TemporaryTestDirectory()), "log");
     }
 }

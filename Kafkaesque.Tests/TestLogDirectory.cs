@@ -2,7 +2,7 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using Testy.Files;
+
 // ReSharper disable ObjectCreationAsStatement
 // ReSharper disable UnusedVariable
 
@@ -43,16 +43,9 @@ namespace Kafkaesque.Tests
 
             Using(writer);
 
-            Assert.Throws<InvalidOperationException>(() => log.GetWriter());
-        }
+            var exception = Assert.Throws<IOException>(() => log.GetWriter());
 
-        string GetLogDirectoryPath()
-        {
-            var tempDirectory = new TemporaryTestDirectory();
-
-            Using(tempDirectory);
-
-            return Path.Combine(tempDirectory, "log");
+            Console.WriteLine(exception);
         }
     }
 }
