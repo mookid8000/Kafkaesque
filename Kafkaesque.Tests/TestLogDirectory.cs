@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using Testy;
 using Testy.Files;
 // ReSharper disable ObjectCreationAsStatement
 // ReSharper disable UnusedVariable
@@ -10,7 +9,7 @@ using Testy.Files;
 namespace Kafkaesque.Tests
 {
     [TestFixture]
-    public class TestLogDirectory : FixtureBase
+    public class TestLogDirectory : KafkaesqueFixtureBase
     {
         [Test]
         public void AutomaticallyCreatesDirectory()
@@ -41,6 +40,8 @@ namespace Kafkaesque.Tests
             var logDirectoryPath = GetLogDirectoryPath();
             var log = new LogDirectory(logDirectoryPath);
             var writer = log.GetWriter();
+
+            Using(writer);
 
             Assert.Throws<InvalidOperationException>(() => log.GetWriter());
         }

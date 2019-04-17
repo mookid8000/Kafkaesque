@@ -3,13 +3,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Testy;
 using Testy.Files;
 
 namespace Kafkaesque.Tests
 {
     [TestFixture]
-    public class TestLogWriter : FixtureBase
+    public class TestLogWriter : KafkaesqueFixtureBase
     {
         [Test]
         public async Task CanWriteAndReadItBack()
@@ -17,9 +16,17 @@ namespace Kafkaesque.Tests
             var logDirectoryPath = GetLogDirectoryPath();
             var logDirectory = new LogDirectory(logDirectoryPath);
 
-            await logDirectory.GetWriter().WriteAsync(new byte[] { 1, 2, 3 });
+            var logWriter = logDirectory.GetWriter();
 
-            var logEvents = logDirectory.GetReader().Read().ToList();
+            Using(logWriter);
+
+            await logWriter.WriteAsync(new byte[] { 1, 2, 3 }, CancelAfter(TimeSpan.FromSeconds(3)));
+
+            var reader = logDirectory.GetReader();
+
+            Using(reader);
+
+            var logEvents = reader.Read().ToList();
 
             Assert.That(logEvents.Count, Is.EqualTo(1));
 
