@@ -5,7 +5,7 @@ namespace Kafkaesque.Internals
 {
     class FileSnap
     {
-        const long ApproxMaxFileLength = 10 * 1024 * 1024;
+        public const long ApproxMaxFileLength = 10 * 1024 * 1024;
 
         public string FilePath { get; }
         public int FileNumber { get; }

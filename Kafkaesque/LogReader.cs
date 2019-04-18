@@ -1,77 +1,82 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Kafkaesque.Internals;
 
 namespace Kafkaesque
 {
-    public class LogReader : IDisposable
+    public class LogReader
     {
-        readonly DirSnap _dirSnap;
-
-        StreamReader _currentReader;
-        string _leftOvers;
+        readonly string _directoryPath;
 
         internal LogReader(string directoryPath)
         {
-            _dirSnap = new DirSnap(directoryPath);
+            _directoryPath = directoryPath;
         }
 
         public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1)
         {
-            if (_dirSnap.IsEmpty)
+            var reader = GetStreamReader(fileNumber, bytePosition);
+
+            if (reader.reader == null)
             {
-                yield break;
+                return Enumerable.Empty<LogEvent>();
             }
 
-            _currentReader = _currentReader ?? (_currentReader = GetCurrentReader(fileNumber, bytePosition));
+            return ReadUsing(reader.reader, reader.filePath);
+        }
 
-            string line;
+        IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath)
+        {
+            var fileNumber = FileSnap.Parse(filePath).FileNumber;
 
-            while ((line = _currentReader.ReadLine()) != null)
+            using (reader)
             {
-                if (!line.EndsWith("#"))
+                string line;
+
+                while ((line = reader.ReadLine()) != null)
                 {
-                    _leftOvers = line;
-                    yield break;
+                    if (!line.EndsWith("#"))
+                    {
+                        yield break;
+                    }
+
+                    var position = reader.GetBytePosition();
+                    var data = Convert.FromBase64String(line.Substring(0, line.Length - 1));
+
+                    yield return new LogEvent(data, fileNumber, position);
                 }
-
-                if (_leftOvers != null)
-                {
-                    line = string.Concat(_leftOvers, line);
-                    _leftOvers = null;
-                }
-
-                var position = _currentReader.GetBytePosition();
-                var data = Convert.FromBase64String(line.Substring(0, line.Length - 1));
-
-                yield return new LogEvent(data, fileNumber, position);
             }
         }
 
-        StreamReader GetCurrentReader(int fileNumber, int bytePosition)
+        (StreamReader reader, string filePath) GetStreamReader(int fileNumber, int bytePosition)
         {
-            while (true)
+            var dirSnap = new DirSnap(_directoryPath);
+
+            if (fileNumber == -1 && dirSnap.IsEmpty) return (null, null);
+
+            var filePath = fileNumber == -1
+                ? dirSnap.FirstFile().FilePath
+                : dirSnap.GetFilePath(fileNumber);
+
+            var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+            if (bytePosition != -1)
             {
-                var filePath = fileNumber == -1
-                    ? _dirSnap.FirstFile().FilePath
-                    : _dirSnap.GetFilePath(fileNumber);
-
-                var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-                if (bytePosition != -1)
+                try
                 {
                     stream.Position = bytePosition;
                 }
-
-                return new StreamReader(stream, Encoding.UTF8);
+                catch
+                {
+                    stream.Dispose();
+                    throw;
+                }
             }
-        }
 
-        public void Dispose()
-        {
-            _currentReader?.Dispose();
+            return (new StreamReader(stream, Encoding.UTF8), filePath);
         }
     }
 }

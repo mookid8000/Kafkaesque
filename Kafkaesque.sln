@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kafkaesque", "Kafkaesque\Kafkaesque.csproj", "{12746985-63D2-4F44-9CDE-B73D7698C4B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kafkaesque.Tests", "Kafkaesque.Tests\Kafkaesque.Tests.csproj", "{DEEB4782-FE57-4F2E-8DB5-FD583B7E74B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kafkaesque.Tests", "Kafkaesque.Tests\Kafkaesque.Tests.csproj", "{DEEB4782-FE57-4F2E-8DB5-FD583B7E74B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KafkaesqueConsoleApp", "KafkaesqueConsoleApp\KafkaesqueConsoleApp.csproj", "{715C0145-C3BD-4893-972D-8AC5499BB35D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{DEEB4782-FE57-4F2E-8DB5-FD583B7E74B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEEB4782-FE57-4F2E-8DB5-FD583B7E74B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEEB4782-FE57-4F2E-8DB5-FD583B7E74B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{715C0145-C3BD-4893-972D-8AC5499BB35D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{715C0145-C3BD-4893-972D-8AC5499BB35D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{715C0145-C3BD-4893-972D-8AC5499BB35D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{715C0145-C3BD-4893-972D-8AC5499BB35D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

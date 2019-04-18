@@ -29,8 +29,6 @@ namespace Kafkaesque.Tests
             var log = new LogDirectory(logDirectoryPath);
             var reader = log.GetReader();
 
-            Using(reader);
-
             var result = reader.Read();
 
             Assert.That(result.Count(), Is.EqualTo(0));
