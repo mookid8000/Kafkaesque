@@ -32,7 +32,7 @@ namespace Kafkaesque
 
             AcquireLockFile(directoryPath, cancellationToken);
 
-            _workerTask = Task.Factory.StartNew(() => Run(directoryPath));
+            _workerTask = Task.Run(() => Run(directoryPath));
         }
 
         public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default(CancellationToken))
@@ -68,6 +68,7 @@ namespace Kafkaesque
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    _logger.Verbose("Still working...");
                     try
                     {
                         await WriteBufferedTasks(dirSnap, cancellationToken);
@@ -83,7 +84,7 @@ namespace Kafkaesque
                     }
                 }
 
-                _logger.Verbose("Exited worker loop");
+                _logger.Verbose("Exited inner worker loop");
 
                 if (_buffer.Count > 0)
                 {
@@ -120,6 +121,8 @@ namespace Kafkaesque
 
             while (_buffer.TryDequeue(out var writeTask))
             {
+                if (writeTask.IsCancelled) continue;
+
                 writeTasks.Add(writeTask);
             }
 
@@ -143,7 +146,7 @@ namespace Kafkaesque
             }
         }
 
-        async Task WriteTasksAsync(List<WriteTask> writeTask, DirSnap dirSnap)
+        async Task WriteTasksAsync(IEnumerable<WriteTask> writeTasks, DirSnap dirSnap)
         {
             if (_currentWriter == null)
             {
@@ -165,7 +168,7 @@ namespace Kafkaesque
 
             var flushNeeded = false;
 
-            foreach (var task in writeTask)
+            foreach (var task in writeTasks)
             {
                 var data = task.Data;
                 var line = Convert.ToBase64String(data);
@@ -176,7 +179,6 @@ namespace Kafkaesque
 
                 if (_approxBytesWritten > FileSnap.ApproxMaxFileLength)
                 {
-                    //_currentWriter.Flush();
                     await _currentWriter.FlushAsync();
                     flushNeeded = false;
                     _currentWriter.Dispose();
@@ -192,7 +194,6 @@ namespace Kafkaesque
 
             if (flushNeeded)
             {
-                //_currentWriter.Flush();
                 await _currentWriter.FlushAsync();
             }
         }
@@ -247,18 +248,17 @@ namespace Kafkaesque
             try
             {
                 using (_cancellationTokenSource)
-                //using (_workerLoopExited)
                 {
                     _logger.Verbose("Requesting cancellation");
                     _cancellationTokenSource.Cancel();
 
+                    var timeout = TimeSpan.FromSeconds(10);
+
                     _logger.Verbose("Waiting for worker loop to exit");
-                    //if (!_workerLoopExited.WaitOne(TimeSpan.FromSeconds(3)))
+                    
+                    if (!_workerTask.Wait(timeout))
                     {
-                        if (!_workerTask.Wait(TimeSpan.FromSeconds(3)))
-                        {
-                            _logger.Warning("Worker loop did not finish working within 3 s timeout!");
-                        }
+                        _logger.Warning("Worker loop did not finish working within {timeout} timeout!", timeout);
                     }
                 }
             }

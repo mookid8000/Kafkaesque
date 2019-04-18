@@ -22,6 +22,8 @@ namespace Kafkaesque
 
         public void Fail(Exception exception) => _taskCompletionSource.SetException(exception);
 
+        public bool IsCancelled => Task.IsCanceled;
+
         void TryCancelTask()
         {
             try

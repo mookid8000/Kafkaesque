@@ -43,6 +43,8 @@ namespace Kafkaesque.Tests
                     await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
                 }
                 Log.Information("Done writing!");
+
+                await Task.Delay(TimeSpan.FromSeconds(0.1));
             }
 
             var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;

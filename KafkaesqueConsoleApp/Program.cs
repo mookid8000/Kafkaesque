@@ -24,10 +24,11 @@ namespace KafkaesqueConsoleApp
 
             using (var writer = logDirectory.GetWriter())
             {
-                var messages = Enumerable.Range(0, count)
-                    .Select(n => $"THIS IS MESSAGE NUMBER {n}");
+                var messages = Enumerable.Range(0, count).Select(n => $"THIS IS MESSAGE NUMBER {n}");
 
                 await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
+
+                await Task.Delay(TimeSpan.FromSeconds(.1));
             }
 
             var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
