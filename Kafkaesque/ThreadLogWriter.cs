@@ -12,7 +12,7 @@ using Serilog;
 
 namespace Kafkaesque
 {
-    class ThreadLogWriter : LogWriter, IDisposable
+    class ThreadLogWriter : LogWriter
     {
         const string LineTerminator = "#";
 

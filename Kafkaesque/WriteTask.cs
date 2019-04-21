@@ -6,7 +6,7 @@ namespace Kafkaesque
 {
     class WriteTask
     {
-        readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>();
+        readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public WriteTask(byte[] data, CancellationToken cancellationToken)
         {
@@ -18,21 +18,12 @@ namespace Kafkaesque
 
         public Task Task => _taskCompletionSource.Task;
 
-        public void Complete() => _taskCompletionSource.SetResult(null);
+        public void Complete() => _taskCompletionSource.TrySetResult(null);
 
-        public void Fail(Exception exception) => _taskCompletionSource.SetException(exception);
+        public void Fail(Exception exception) => _taskCompletionSource.TrySetException(exception);
 
         public bool IsCancelled => Task.IsCanceled;
 
-        void TryCancelTask()
-        {
-            try
-            {
-                _taskCompletionSource.SetCanceled();
-            }
-            catch
-            {
-            }
-        }
+        void TryCancelTask() => _taskCompletionSource.TrySetCanceled();
     }
 }

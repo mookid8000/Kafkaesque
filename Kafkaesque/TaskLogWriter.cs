@@ -9,10 +9,12 @@ using System.Threading.Tasks;
 using Kafkaesque.Internals;
 using Serilog;
 // ReSharper disable InvertIf
+// ReSharper disable MethodSupportsCancellation
+#pragma warning disable 4014
 
 namespace Kafkaesque
 {
-    class TaskLogWriter : LogWriter, IDisposable
+    class TaskLogWriter : LogWriter
     {
         const string LineTerminator = "#";
 
@@ -34,7 +36,7 @@ namespace Kafkaesque
             _logger = Log.ForContext<TaskLogWriter>().ForContext("dir", directoryPath);
 
             AcquireLockFile(directoryPath, cancellationToken);
-            
+
             _workerTask = Task.Run(Run);
         }
 
