@@ -28,7 +28,7 @@ namespace KafkaesqueConsoleApp
 
                 await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
 
-                await Task.Delay(TimeSpan.FromSeconds(.1));
+                //await Task.Delay(TimeSpan.FromSeconds(.1));
             }
 
             var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;

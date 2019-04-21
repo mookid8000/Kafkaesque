@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kafkaesque.Internals;
 using Serilog;
+// ReSharper disable InvertIf
 
 namespace Kafkaesque
 {
@@ -17,6 +18,7 @@ namespace Kafkaesque
 
         readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         readonly ConcurrentQueue<WriteTask> _buffer = new ConcurrentQueue<WriteTask>();
+        readonly string _directoryPath;
         readonly Task _workerTask;
         readonly ILogger _logger;
 
@@ -28,21 +30,22 @@ namespace Kafkaesque
 
         internal LogWriter(string directoryPath, CancellationToken cancellationToken)
         {
+            _directoryPath = directoryPath;
             _logger = Log.ForContext<LogWriter>().ForContext("dir", directoryPath);
 
             AcquireLockFile(directoryPath, cancellationToken);
-
-            _workerTask = Task.Run(() => Run(directoryPath));
+            
+            _workerTask = Task.Run(Run);
         }
 
-        public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
             var writeTask = new WriteTask(data, cancellationToken);
             _buffer.Enqueue(writeTask);
             return writeTask.Task;
         }
 
-        public Task WriteManyAsync(IEnumerable<byte[]> dataSequence, CancellationToken cancellationToken = default(CancellationToken))
+        public Task WriteManyAsync(IEnumerable<byte[]> dataSequence, CancellationToken cancellationToken = default)
         {
             var tasks = new List<Task>();
 
@@ -56,19 +59,18 @@ namespace Kafkaesque
             return Task.WhenAll(tasks);
         }
 
-        async Task Run(string directoryPath)
+        async Task Run()
         {
             var cancellationToken = _cancellationTokenSource.Token;
 
             _logger.Information("Starting writer worker loop");
 
-            var dirSnap = new DirSnap(directoryPath);
+            var dirSnap = new DirSnap(_directoryPath);
 
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    _logger.Verbose("Still working...");
                     try
                     {
                         await WriteBufferedTasks(dirSnap, cancellationToken);
@@ -252,13 +254,19 @@ namespace Kafkaesque
                     _logger.Verbose("Requesting cancellation");
                     _cancellationTokenSource.Cancel();
 
-                    var timeout = TimeSpan.FromSeconds(10);
+                    var timeout = TimeSpan.FromSeconds(3);
 
                     _logger.Verbose("Waiting for worker loop to exit");
-                    
+
+                    if (_workerTask.Status == TaskStatus.WaitingForActivation)
+                    {
+                    }
+
                     if (!_workerTask.Wait(timeout))
                     {
-                        _logger.Warning("Worker loop did not finish working within {timeout} timeout!", timeout);
+                        _logger.Warning(
+                            "Worker loop did not finish working within {timeout} timeout - task state is {taskState}",
+                            timeout, _workerTask.Status);
                     }
                 }
             }
@@ -272,7 +280,9 @@ namespace Kafkaesque
                         _logger.Verbose("Lock file released");
                     }
                 }
-                catch { }
+                catch
+                {
+                }
 
                 _disposed = true;
             }

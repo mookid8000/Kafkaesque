@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -9,7 +10,7 @@ namespace Kafkaesque.Tests
     [TestFixture]
     public class TestLongHistory : KafkaesqueFixtureBase
     {
-        [TestCase(100)]
+        [TestCase(10)]
         public async Task CanReadBackEventsSpreadOverMultipleFiles(int count)
         {
             SetLogLevel(LogEventLevel.Verbose);
@@ -20,10 +21,7 @@ namespace Kafkaesque.Tests
 
             using (var writer = logDirectory.GetWriter())
             {
-                foreach (var message in messages)
-                {
-                    await writer.WriteAsync(Encoding.UTF8.GetBytes(message));
-                }
+                await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
             }
         }
     }
