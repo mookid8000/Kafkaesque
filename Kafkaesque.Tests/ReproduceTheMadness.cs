@@ -14,7 +14,7 @@ namespace Kafkaesque.Tests
         {
             using (new ThisIsCrazy())
             {
-                await Task.Delay(TimeSpan.FromSeconds(4));
+                await Task.Delay(TimeSpan.FromSeconds(1));
             }
         }
 

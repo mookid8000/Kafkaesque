@@ -6,7 +6,7 @@ namespace Kafkaesque
 {
     class WriteTask
     {
-        readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+        readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>();
 
         public WriteTask(byte[] data, CancellationToken cancellationToken)
         {

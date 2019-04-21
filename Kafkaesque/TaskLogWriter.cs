@@ -42,6 +42,8 @@ namespace Kafkaesque
 
         public override Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
+            EnsureIsNotDisposing();
+
             var writeTask = new WriteTask(data, cancellationToken);
             _buffer.Enqueue(writeTask);
             return writeTask.Task;
@@ -49,6 +51,8 @@ namespace Kafkaesque
 
         public override Task WriteManyAsync(IEnumerable<byte[]> dataSequence, CancellationToken cancellationToken = default)
         {
+            EnsureIsNotDisposing();
+
             var tasks = new List<Task>();
 
             foreach (var data in dataSequence)
@@ -59,6 +63,17 @@ namespace Kafkaesque
             }
 
             return Task.WhenAll(tasks);
+        }
+
+        void EnsureIsNotDisposing()
+        {
+            if (!_cancellationTokenSource.IsCancellationRequested) return;
+
+            var message = _disposed
+                ? "Cannot write anymore, because the log writer is disposed"
+                : "Cannot write anymore, because the log writer is in the process of being disposed";
+
+            throw new InvalidOperationException(message);
         }
 
         async Task Run()
