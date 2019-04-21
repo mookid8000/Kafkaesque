@@ -19,7 +19,7 @@ namespace Kafkaesque
         readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         readonly ConcurrentQueue<WriteTask> _buffer = new ConcurrentQueue<WriteTask>();
         readonly string _directoryPath;
-        readonly Task _workerTask;
+        readonly Thread _workerThread;
         readonly ILogger _logger;
 
         StreamWriter _currentWriter;
@@ -34,8 +34,9 @@ namespace Kafkaesque
             _logger = Log.ForContext<ThreadLogWriter>().ForContext("dir", directoryPath);
 
             AcquireLockFile(directoryPath, cancellationToken);
-            
-            _workerTask = Task.Run(Run);
+
+            _workerThread = new Thread(Run) { IsBackground = true };
+            _workerThread.Start();
         }
 
         public override Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
@@ -59,7 +60,7 @@ namespace Kafkaesque
             return Task.WhenAll(tasks);
         }
 
-        async Task Run()
+        void Run()
         {
             var cancellationToken = _cancellationTokenSource.Token;
 
@@ -73,7 +74,7 @@ namespace Kafkaesque
                 {
                     try
                     {
-                        await WriteBufferedTasks(dirSnap, cancellationToken);
+                        WriteBufferedTasks(dirSnap, cancellationToken);
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -92,7 +93,7 @@ namespace Kafkaesque
                 {
                     _logger.Verbose("Emptying write task buffer");
 
-                    await WriteBufferedTasks(dirSnap, cancellationToken);
+                    WriteBufferedTasks(dirSnap, cancellationToken);
                 }
 
                 _logger.Verbose("Write task buffer empty");
@@ -100,6 +101,10 @@ namespace Kafkaesque
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // ok
+            }
+            catch (ThreadAbortException)
+            {
+                _logger.Warning("Worker thread abortion detected!");
             }
             catch (Exception exception)
             {
@@ -116,7 +121,7 @@ namespace Kafkaesque
             }
         }
 
-        async Task WriteBufferedTasks(DirSnap dirSnap, CancellationToken cancellationToken)
+        void WriteBufferedTasks(DirSnap dirSnap, CancellationToken cancellationToken)
         {
             // todo: pre-allocate array of fixed size and use it to store dequeued write tasks
             var writeTasks = new List<WriteTask>(_buffer.Count);
@@ -130,13 +135,13 @@ namespace Kafkaesque
 
             if (writeTasks.Count == 0)
             {
-                await Task.Delay(37, cancellationToken);
+                Task.Delay(37, cancellationToken).Wait(cancellationToken);
                 return;
             }
 
             try
             {
-                await WriteTasksAsync(writeTasks, dirSnap);
+                WriteTasksAsync(writeTasks, dirSnap);
 
                 writeTasks.ForEach(task => task.Complete());
 
@@ -148,7 +153,7 @@ namespace Kafkaesque
             }
         }
 
-        async Task WriteTasksAsync(IEnumerable<WriteTask> writeTasks, DirSnap dirSnap)
+        void WriteTasksAsync(IEnumerable<WriteTask> writeTasks, DirSnap dirSnap)
         {
             if (_currentWriter == null)
             {
@@ -181,7 +186,7 @@ namespace Kafkaesque
 
                 if (_approxBytesWritten > FileSnap.ApproxMaxFileLength)
                 {
-                    await _currentWriter.FlushAsync();
+                    _currentWriter.Flush();
                     flushNeeded = false;
                     _currentWriter.Dispose();
 
@@ -196,7 +201,7 @@ namespace Kafkaesque
 
             if (flushNeeded)
             {
-                await _currentWriter.FlushAsync();
+                _currentWriter.Flush();
             }
         }
 
@@ -258,15 +263,11 @@ namespace Kafkaesque
 
                     _logger.Verbose("Waiting for worker loop to exit");
 
-                    if (_workerTask.Status == TaskStatus.WaitingForActivation)
+                    if (!_workerThread.Join(timeout))
                     {
-                    }
+                        _logger.Warning("Worker loop did not finish working within {timeout} timeout", timeout);
 
-                    if (!_workerTask.Wait(timeout))
-                    {
-                        _logger.Warning(
-                            "Worker loop did not finish working within {timeout} timeout - task state is {taskState}",
-                            timeout, _workerTask.Status);
+                        _workerThread.Abort();
                     }
                 }
             }
