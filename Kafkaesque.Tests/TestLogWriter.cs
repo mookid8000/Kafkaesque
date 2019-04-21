@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Kafkaesque.Tests.Extensions;
 using NUnit.Framework;
 using Serilog;
 using Serilog.Events;
@@ -49,7 +50,7 @@ namespace Kafkaesque.Tests
 
             var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
 
-            Console.WriteLine($"Wrote {count} msgs in {elapsedSeconds:0.0} s - that's {count/elapsedSeconds:0.0} msg/s");
+            Console.WriteLine($"Wrote {count} msgs in {elapsedSeconds:0.0} s - that's {count / elapsedSeconds:0.0} msg/s");
         }
 
         [Test]
@@ -111,33 +112,16 @@ namespace Kafkaesque.Tests
                 }
             }
 
-            var files = Directory.GetFiles(logDirectoryPath)
-                .Select(file => new {FilePath = file, Length = new FileInfo(file).Length})
-                .ToList();
+            var directoryInfo = new DirectoryInfo(logDirectoryPath);
 
-            Console.WriteLine($@"Here are the files:
+            directoryInfo.DumpDirectoryContentsToConsole();
 
-{string.Join(Environment.NewLine, files.Select(f => $"    {f.FilePath} ({FormatSize(f.Length)})"))}
-
-");
+            var files = directoryInfo.GetFiles();
 
             var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
             var totalBytesWritten = files.Sum(a => a.Length);
 
-            Console.WriteLine($"Wrote {FormatSize(totalBytesWritten)} in {elapsedSeconds:0.0} s - that's {FormatSize((long)(totalBytesWritten/elapsedSeconds))}/s");
-        }
-
-        static string FormatSize(long bytes)
-        {
-            if (bytes < 1024) return $"{bytes} B";
-
-            var kiloBytes = bytes / (double)1024;
-
-            if (kiloBytes < 1024) return $"{kiloBytes:0.0#} kB";
-
-            var megaBytes = kiloBytes / 1024;
-
-            return $"{megaBytes:0.0#} MB";
+            Console.WriteLine($"Wrote {totalBytesWritten.FormatAsHumanReadableSize()} in {elapsedSeconds:0.0} s - that's {((long)(totalBytesWritten / elapsedSeconds)).FormatAsHumanReadableSize()}/s");
         }
     }
 }

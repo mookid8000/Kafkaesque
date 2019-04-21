@@ -29,7 +29,7 @@ namespace Kafkaesque.Internals
 
         public FileSnap LastFile() => GetFiles().Last();
 
-        public string GetFilePath(int fileNumber) => Path.Combine(DirectoryPath, $"log-{fileNumber}.dat");
+        public string GetFilePath(int fileNumber) => Path.Combine(DirectoryPath, $"log-{fileNumber:000000000}.dat");
 
         public void RegisterFile(string filePath)
         {
