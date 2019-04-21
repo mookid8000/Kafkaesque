@@ -70,7 +70,7 @@ namespace Kafkaesque.Tests
                     }
                     catch (Exception exception)
                     {
-                        throw new AssertionException($"Error processing event with fileNumber = {message.FileNumber}, bytePosition = {message.BytePosition}", exception);
+                        throw new ApplicationException($"Error processing event with fileNumber = {message.FileNumber}, bytePosition = {message.BytePosition}", exception);
                     }
 
                     expectedMessageNumber++;
