@@ -5,12 +5,8 @@ namespace Kafkaesque.Internals
 {
     class FileSnap
     {
-        public const long ApproxMaxFileLength = 10 * 1024 * 1024;
-
         public string FilePath { get; }
         public int FileNumber { get; }
-
-        public bool IsTooBig => new FileInfo(FilePath).Length > ApproxMaxFileLength;
 
         public FileSnap(string filePath, int fileNumber)
         {
@@ -18,7 +14,7 @@ namespace Kafkaesque.Internals
             FileNumber = fileNumber;
         }
 
-        public static FileSnap Parse(string filePath)
+        public static FileSnap Create(string filePath)
         {
             var fileName = Path.GetFileNameWithoutExtension(filePath) ?? "";
             var parts = fileName.Split('-');
@@ -29,7 +25,8 @@ namespace Kafkaesque.Internals
             }
 
             var fileNumberString = parts[1];
-            if (!Int32.TryParse(fileNumberString, out var fileNumber))
+            
+            if (!int.TryParse(fileNumberString, out var fileNumber))
             {
                 throw new FormatException($"The file path '{filePath}' could not be interpreted as a proper log file, because the string '{fileNumberString}'");
             }

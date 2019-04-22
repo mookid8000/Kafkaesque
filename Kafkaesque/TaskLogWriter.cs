@@ -17,6 +17,7 @@ namespace Kafkaesque
     class TaskLogWriter : LogWriter
     {
         const string LineTerminator = "#";
+        const long ApproxMaxFileLength = 10 * 1024 * 1024;
 
         readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         readonly ConcurrentQueue<WriteTask> _buffer = new ConcurrentQueue<WriteTask>();
@@ -196,7 +197,7 @@ namespace Kafkaesque
                 _approxBytesWritten += line.Length + 1;
                 flushNeeded = true;
 
-                if (_approxBytesWritten > FileSnap.ApproxMaxFileLength)
+                if (_approxBytesWritten > ApproxMaxFileLength)
                 {
                     await _currentWriter.FlushAsync();
                     flushNeeded = false;

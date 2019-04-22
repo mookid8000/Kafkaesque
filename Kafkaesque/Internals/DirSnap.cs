@@ -15,7 +15,7 @@ namespace Kafkaesque.Internals
 
             _files = Directory
                 .GetFiles(directoryPath, "log-*.dat")
-                .Select(FileSnap.Parse)
+                .Select(FileSnap.Create)
                 .ToList();
         }
 
@@ -33,7 +33,7 @@ namespace Kafkaesque.Internals
 
         public void RegisterFile(string filePath)
         {
-            _files.Add(FileSnap.Parse(filePath));
+            _files.Add(FileSnap.Create(filePath));
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Kafkaesque.Internals;
 
 namespace Kafkaesque
@@ -16,21 +17,25 @@ namespace Kafkaesque
             _directoryPath = directoryPath;
         }
 
-        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1)
+        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default)
         {
-            var reader = GetStreamReader(fileNumber, bytePosition);
-
-            if (reader.reader == null)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                return Enumerable.Empty<LogEvent>();
-            }
+                var reader = GetStreamReader(fileNumber, bytePosition);
 
-            return ReadUsing(reader.reader, reader.filePath);
+                foreach (var message in ReadUsing(reader.reader, reader.filePath))
+                {
+                    fileNumber = message.FileNumber;
+                    bytePosition = message.BytePosition;
+
+                    yield return message;
+                }
+            }
         }
 
         IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath)
         {
-            var fileNumber = FileSnap.Parse(filePath).FileNumber;
+            var fileNumber = FileSnap.Create(filePath).FileNumber;
 
             using (reader)
             {
