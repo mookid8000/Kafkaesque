@@ -79,12 +79,20 @@ namespace Kafkaesque
             {
                 string line;
 
+                var firstIteration = true;
+
                 while ((line = reader.ReadLine()) != null)
                 {
                     if (!line.EndsWith("#"))
                     {
                         _logger.Verbose("Line {line} did not end with #", line);
                         yield break;
+                    }
+
+                    if (firstIteration)
+                    {
+                        _logger.Verbose("Successfully initiated read operation from file {filePath}", filePath);
+                        firstIteration = false;
                     }
 
                     var position = reader.GetBytePosition();

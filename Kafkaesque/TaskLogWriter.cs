@@ -156,9 +156,9 @@ namespace Kafkaesque
             {
                 await WriteTasksAsync(writeTasks, dirSnap);
 
-                writeTasks.ForEach(task => task.Complete());
-
                 _logger.Verbose("Successfully wrote batch of {count} messages", writeTasks.Count);
+
+                writeTasks.ForEach(task => task.Complete());
             }
             catch (Exception exception)
             {

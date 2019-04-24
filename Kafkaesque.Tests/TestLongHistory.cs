@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Kafkaesque.Tests.Extensions;
 using NUnit.Framework;
 using Serilog.Events;
+using Testy.General;
+
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleOther
 
@@ -98,15 +100,34 @@ namespace Kafkaesque.Tests
             var directoryInfo = new DirectoryInfo(logDirectoryPath);
             var logDirectory = new LogDirectory(directoryInfo);
 
+            var doneWriting = Using(new ManualResetEvent(false));
+
             var writer = logDirectory.GetWriter();
 
-            Using(writer);
+            // ensure that the background thread has finished writing before we dispose the writer
+            Using(new DisposableCallback(() =>
+            {
+                using (writer)
+                {
+                    if (!doneWriting.WaitOne(TimeSpan.FromSeconds(30)))
+                    {
+                        Console.WriteLine("WARNING: WRITE OPERATION WAS NOT COMPLETED WITHIN 30 s TIMEOUT");
+                    }
+                }
+            }));
 
             ThreadPool.QueueUserWorkItem(async _ =>
             {
-                await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
+                try
+                {
+                    await writer.WriteManyAsync(messages.Select(Encoding.UTF8.GetBytes));
 
-                directoryInfo.DumpDirectoryContentsToConsole();
+                    directoryInfo.DumpDirectoryContentsToConsole();
+                }
+                finally
+                {
+                    doneWriting.Set();
+                }
             });
 
             var reader = logDirectory.GetReader();
