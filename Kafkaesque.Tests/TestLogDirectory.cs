@@ -29,7 +29,7 @@ namespace Kafkaesque.Tests
             var log = new LogDirectory(logDirectoryPath);
             var reader = log.GetReader();
 
-            var result = reader.Read();
+            var result = reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(3)));
 
             Assert.That(result.Count(), Is.EqualTo(0));
         }

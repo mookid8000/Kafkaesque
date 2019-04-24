@@ -1,34 +1,60 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using Kafkaesque.Internals;
+using Serilog;
 
 namespace Kafkaesque
 {
     public class LogReader
     {
         readonly string _directoryPath;
+        readonly ILogger _logger;
 
         internal LogReader(string directoryPath)
         {
             _directoryPath = directoryPath;
+            _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
         }
 
         public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default)
         {
+            _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
+
+            // use these two to remember if we've done an empty read, in which case we might try and advance the file pointer
+            var didReadEvents = true;
+
             while (!cancellationToken.IsCancellationRequested)
             {
-                var reader = GetStreamReader(fileNumber, bytePosition);
+                var (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 
-                foreach (var message in ReadUsing(reader.reader, reader.filePath))
+                // if we can't read from here, try the next file
+                if (!canRead || !didReadEvents)
+                {
+                    _logger.Verbose("Could not read from file {fileNumber} position {bytePosition} - trying next file", fileNumber, bytePosition);
+
+                    (reader, filePath, canRead) = GetStreamReader(fileNumber + 1, -1);
+
+                    // if we still can't read, wait a short while and continue
+                    if (!canRead)
+                    {
+                        Thread.Sleep(200);
+                        continue;
+                    }
+                }
+
+                didReadEvents = false;
+
+                foreach (var message in ReadUsing(reader, filePath))
                 {
                     fileNumber = message.FileNumber;
                     bytePosition = message.BytePosition;
 
                     yield return message;
+
+                    didReadEvents = true;
                 }
             }
         }
@@ -45,6 +71,7 @@ namespace Kafkaesque
                 {
                     if (!line.EndsWith("#"))
                     {
+                        _logger.Verbose("Line {line} did not end with #", line);
                         yield break;
                     }
 
@@ -56,17 +83,31 @@ namespace Kafkaesque
             }
         }
 
-        (StreamReader reader, string filePath) GetStreamReader(int fileNumber, int bytePosition)
+        (StreamReader reader, string filePath, bool canRead) GetStreamReader(int fileNumber, int bytePosition)
         {
             var dirSnap = new DirSnap(_directoryPath);
 
-            if (fileNumber == -1 && dirSnap.IsEmpty) return (null, null);
+            if (fileNumber == -1 && dirSnap.IsEmpty) return (null, null, false);
 
             var filePath = fileNumber == -1
                 ? dirSnap.FirstFile().FilePath
                 : dirSnap.GetFilePath(fileNumber);
 
-            var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            FileStream GetStreamOrNull()
+            {
+                try
+                {
+                    return File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                }
+                catch (FileNotFoundException)
+                {
+                    return null;
+                }
+            }
+
+            var stream = GetStreamOrNull();
+
+            if (stream == null) return (null, null, false);
 
             if (bytePosition != -1)
             {
@@ -81,7 +122,7 @@ namespace Kafkaesque
                 }
             }
 
-            return (new StreamReader(stream, Encoding.UTF8), filePath);
+            return (new StreamReader(stream, Encoding.UTF8), filePath, true);
         }
     }
 }

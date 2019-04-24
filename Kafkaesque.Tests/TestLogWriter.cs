@@ -67,7 +67,7 @@ namespace Kafkaesque.Tests
 
             var reader = logDirectory.GetReader();
 
-            var logEvents = reader.Read().ToList();
+            var logEvents = reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(3))).ToList();
 
             Assert.That(logEvents.Count, Is.EqualTo(1));
 
