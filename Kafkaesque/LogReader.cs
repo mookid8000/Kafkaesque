@@ -35,14 +35,26 @@ namespace Kafkaesque
                 {
                     _logger.Verbose("Could not read from file {fileNumber} position {bytePosition} - trying next file", fileNumber, bytePosition);
 
-                    (reader, filePath, canRead) = GetStreamReader(fileNumber + 1, -1);
+                    var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
 
                     // if we still can't read, wait a short while and continue
-                    if (!canRead)
+                    if (!nextCanRead)
                     {
                         Thread.Sleep(200);
                         continue;
                     }
+
+                    // if we can read, we need to be absolutely sure that we've read everything from the previous file - therefore:
+                    foreach (var message in ReadUsing(reader, filePath))
+                    {
+                        fileNumber = message.FileNumber;
+                        bytePosition = message.BytePosition;
+
+                        yield return message;
+                    }
+
+                    reader = nextReader;
+                    filePath = nextFilePath;
                 }
 
                 didReadEvents = false;
