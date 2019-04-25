@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -15,10 +16,10 @@ namespace Kafkaesque.Tests
         public void AutomaticallyCreatesDirectory()
         {
             var logDirectoryPath = GetLogDirectoryPath();
-            
+
             new LogDirectory(logDirectoryPath);
 
-            Assert.That(Directory.Exists(logDirectoryPath), 
+            Assert.That(Directory.Exists(logDirectoryPath),
                 $"Did not find the directory '{logDirectoryPath}' as expected");
         }
 
@@ -29,7 +30,7 @@ namespace Kafkaesque.Tests
             var log = new LogDirectory(logDirectoryPath);
             var reader = log.GetReader();
 
-            var result = reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(3)));
+            var result = reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(3))).ToList();
 
             Assert.That(result.Count(), Is.EqualTo(0));
         }

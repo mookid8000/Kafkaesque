@@ -19,7 +19,7 @@ namespace Kafkaesque
             _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
         }
 
-        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default)
+        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
         {
             _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
 
@@ -28,7 +28,14 @@ namespace Kafkaesque
 
             while (true)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                if (throwWhenCancelled)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                else if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
 
                 var (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 
@@ -60,7 +67,7 @@ namespace Kafkaesque
                         {
                             _logger.Verbose("Ensuring that we read the last of the file {filePath}", filePath);
 
-                            foreach (var message in ReadUsing(reader, filePath, cancellationToken))
+                            foreach (var message in ReadUsing(reader, filePath, cancellationToken, throwWhenCancelled))
                             {
                                 fileNumber = message.FileNumber;
                                 bytePosition = message.BytePosition;
@@ -80,7 +87,7 @@ namespace Kafkaesque
 
                 didReadEvents = false;
 
-                foreach (var message in ReadUsing(reader, filePath, cancellationToken))
+                foreach (var message in ReadUsing(reader, filePath, cancellationToken, throwWhenCancelled))
                 {
                     fileNumber = message.FileNumber;
                     bytePosition = message.BytePosition;
@@ -92,7 +99,7 @@ namespace Kafkaesque
             }
         }
 
-        IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath, CancellationToken cancellationToken)
+        IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath, CancellationToken cancellationToken, bool throwWhenCancelled)
         {
             var fileNumber = FileSnap.Create(filePath).FileNumber;
             var lineCounter = 0;
@@ -107,7 +114,14 @@ namespace Kafkaesque
 
                     while ((line = reader.ReadLine()) != null)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        if (throwWhenCancelled)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+                        else if (cancellationToken.IsCancellationRequested)
+                        {
+                            yield break;
+                        }
 
                         if (!line.EndsWith("#"))
                         {
