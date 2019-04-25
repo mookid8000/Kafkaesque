@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -13,7 +14,28 @@ namespace Kafkaesque.Tests
     [TestFixture]
     public class TestStress : KafkaesqueFixtureBase
     {
+        [TestCase(1000000, 3)]
+        [TestCase(1000000, 4)]
+        [TestCase(1000000, 5)]
+        [TestCase(1000000, 6)]
+        [TestCase(1000000, 7)]
+        [TestCase(1000000, 8)]
+        [TestCase(1000000, 9)]
+        [TestCase(1000000, 10)]
+        [TestCase(1, 2)]
+        [TestCase(10, 2)]
+        [TestCase(100, 2)]
+        [TestCase(1000, 2)]
+        [TestCase(10000, 2)]
+        [TestCase(100000, 2)]
+        [TestCase(1000000, 2)]
         [TestCase(1, 1)]
+        [TestCase(10, 1)]
+        [TestCase(100, 1)]
+        [TestCase(1000, 1)]
+        [TestCase(10000, 1)]
+        [TestCase(100000, 1)]
+        [TestCase(1000000, 1)]
         public async Task ItWorks(int count, int readerCount)
         {
             SetLogLevel(LogEventLevel.Information);
@@ -41,19 +63,22 @@ namespace Kafkaesque.Tests
                     {
                         Thread = new Thread(() =>
                         {
-                            var fileNumber = -1;
-                            var bytePosition = -1;
-
-                            while (!cancellationToken.IsCancellationRequested)
+                            try
                             {
-                                foreach (var logEvent in logReader.Read(fileNumber, bytePosition))
+                                foreach (var logEvent in logReader.Read(cancellationToken: cancellationToken))
                                 {
                                     readMessages.Enqueue(Encoding.UTF8.GetString(logEvent.Data));
-                                    fileNumber = logEvent.FileNumber;
-                                    bytePosition = logEvent.BytePosition;
                                 }
                             }
-                        }),
+                            catch (Exception exception)
+                            {
+                                Console.WriteLine(exception);
+                            }
+                        })
+                        {
+                            IsBackground = true,
+                            Name = $"Reader thread {r}"
+                        },
 
                         Messages = readMessages
                     };
@@ -62,15 +87,32 @@ namespace Kafkaesque.Tests
 
             readerThreads.ForEach(a => a.Thread.Start());
 
-            while (messagesToWrite.TryDequeue(out var message))
-            {
-                await writer.WriteAsync(Encoding.UTF8.GetBytes(message), cancellationToken);
-            }
+            await writer.WriteManyAsync(messagesToWrite.Select(Encoding.UTF8.GetBytes), cancellationToken);
 
-            await Task.WhenAll(readerThreads.Select(async r =>
+            try
             {
-                await r.Messages.WaitFor(q => q.Count == count, invariantExpression: q => q.Count <= count);
-            }));
+                await Task.WhenAll(readerThreads.Select(async r =>
+                {
+                    try
+                    {
+                        await r.Messages.WaitFor(
+                            completionExpression: q => q.Count == count,
+                            invariantExpression: q => q.Count <= count,
+                            timeoutSeconds: 10
+                        );
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new ApplicationException(
+                            $"Completion criteria not satisfied for thread with name '{r.Thread.Name}'", exception);
+                    }
+                }));
+            }
+            catch
+            {
+                cancellationTokenSource.Cancel();
+                throw;
+            }
         }
     }
 }

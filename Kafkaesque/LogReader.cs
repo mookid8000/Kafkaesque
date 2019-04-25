@@ -26,8 +26,10 @@ namespace Kafkaesque
             // use these two to remember if we've done an empty read, in which case we might try and advance the file pointer
             var didReadEvents = true;
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 
                 // if we can't read from here, try the next file
@@ -58,7 +60,7 @@ namespace Kafkaesque
                         {
                             _logger.Verbose("Ensuring that we read the last of the file {filePath}", filePath);
 
-                            foreach (var message in ReadUsing(reader, filePath))
+                            foreach (var message in ReadUsing(reader, filePath, cancellationToken))
                             {
                                 fileNumber = message.FileNumber;
                                 bytePosition = message.BytePosition;
@@ -78,7 +80,7 @@ namespace Kafkaesque
 
                 didReadEvents = false;
 
-                foreach (var message in ReadUsing(reader, filePath))
+                foreach (var message in ReadUsing(reader, filePath, cancellationToken))
                 {
                     fileNumber = message.FileNumber;
                     bytePosition = message.BytePosition;
@@ -90,7 +92,7 @@ namespace Kafkaesque
             }
         }
 
-        IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath)
+        IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath, CancellationToken cancellationToken)
         {
             var fileNumber = FileSnap.Create(filePath).FileNumber;
             var lineCounter = 0;
@@ -105,6 +107,8 @@ namespace Kafkaesque
 
                     while ((line = reader.ReadLine()) != null)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         if (!line.EndsWith("#"))
                         {
                             _logger.Verbose("Line {line} did not end with #", line);
