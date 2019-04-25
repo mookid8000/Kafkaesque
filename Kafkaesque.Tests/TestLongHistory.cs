@@ -109,9 +109,10 @@ namespace Kafkaesque.Tests
             {
                 using (writer)
                 {
-                    if (!doneWriting.WaitOne(TimeSpan.FromSeconds(30)))
+                    var timeout = TimeSpan.FromMinutes(1);
+                    if (!doneWriting.WaitOne(timeout))
                     {
-                        Console.WriteLine("WARNING: WRITE OPERATION WAS NOT COMPLETED WITHIN 30 s TIMEOUT");
+                        Console.WriteLine($"WARNING: WRITE OPERATION WAS NOT COMPLETED WITHIN {timeout} TIMEOUT");
                     }
                 }
             }));

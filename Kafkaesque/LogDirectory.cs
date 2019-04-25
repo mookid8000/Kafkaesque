@@ -24,7 +24,7 @@ namespace Kafkaesque
             }
         }
 
-        public LogWriter GetWriter(CancellationToken cancellationToken = default) => new TaskLogWriter(_directoryPath, cancellationToken);
+        public LogWriter GetWriter(CancellationToken cancellationToken = default) => new LogWriter(_directoryPath, cancellationToken);
 
         public LogReader GetReader() => new LogReader(_directoryPath);
 

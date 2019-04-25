@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading;
 using Kafkaesque.Internals;
@@ -45,12 +46,28 @@ namespace Kafkaesque
                     }
 
                     // if we can read, we need to be absolutely sure that we've read everything from the previous file - therefore:
-                    foreach (var message in ReadUsing(reader, filePath))
+                    if (!string.IsNullOrWhiteSpace(filePath))
                     {
-                        fileNumber = message.FileNumber;
-                        bytePosition = message.BytePosition;
+                        _logger.Verbose("Next file {filePath} can be read", nextFilePath);
 
-                        yield return message;
+                        (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
+
+                        if (canRead)
+                        {
+                            _logger.Verbose("Ensuring that we read the last of the file {filePath}", filePath);
+
+                            foreach (var message in ReadUsing(reader, filePath))
+                            {
+                                fileNumber = message.FileNumber;
+                                bytePosition = message.BytePosition;
+
+                                yield return message;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logger.Verbose("So, we're reading from {filePath} now", nextFilePath);
                     }
 
                     reader = nextReader;
@@ -74,31 +91,44 @@ namespace Kafkaesque
         IEnumerable<LogEvent> ReadUsing(StreamReader reader, string filePath)
         {
             var fileNumber = FileSnap.Create(filePath).FileNumber;
+            var lineCounter = 0;
 
-            using (reader)
+            try
             {
-                string line;
-
-                var firstIteration = true;
-
-                while ((line = reader.ReadLine()) != null)
+                using (reader)
                 {
-                    if (!line.EndsWith("#"))
+                    string line;
+
+                    var firstIteration = true;
+
+                    while ((line = reader.ReadLine()) != null)
                     {
-                        _logger.Verbose("Line {line} did not end with #", line);
-                        yield break;
+                        if (!line.EndsWith("#"))
+                        {
+                            _logger.Verbose("Line {line} did not end with #", line);
+                            yield break;
+                        }
+
+                        lineCounter++;
+
+                        if (firstIteration)
+                        {
+                            _logger.Verbose("Successfully initiated read operation from file {filePath}", filePath);
+                            firstIteration = false;
+                        }
+
+                        var position = reader.GetBytePosition();
+                        var data = Convert.FromBase64String(line.Substring(0, line.Length - 1));
+
+                        yield return new LogEvent(data, fileNumber, position);
                     }
-
-                    if (firstIteration)
-                    {
-                        _logger.Verbose("Successfully initiated read operation from file {filePath}", filePath);
-                        firstIteration = false;
-                    }
-
-                    var position = reader.GetBytePosition();
-                    var data = Convert.FromBase64String(line.Substring(0, line.Length - 1));
-
-                    yield return new LogEvent(data, fileNumber, position);
+                }
+            }
+            finally
+            {
+                if (lineCounter > 0)
+                {
+                    _logger.Verbose("Successfully read {count} lines from file {filePath}", lineCounter, filePath);
                 }
             }
         }
@@ -121,8 +151,12 @@ namespace Kafkaesque
                 }
                 catch (FileNotFoundException)
                 {
-                    return null;
                 }
+                catch (Exception exception)
+                {
+                    _logger.Verbose(exception, "Got exception when trying to open {filePath}", filePath);
+                }
+                return null;
             }
 
             var stream = GetStreamOrNull();
@@ -135,10 +169,11 @@ namespace Kafkaesque
                 {
                     stream.Position = bytePosition;
                 }
-                catch
+                catch (Exception exception)
                 {
                     stream.Dispose();
-                    throw;
+                    _logger.Verbose(exception, "Got exception when trying to file {filePath} stream to position {bytePosition}", filePath, bytePosition);
+                    return (null, null, false);
                 }
             }
 

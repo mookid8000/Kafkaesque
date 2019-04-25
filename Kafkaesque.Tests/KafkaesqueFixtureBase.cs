@@ -30,7 +30,12 @@ namespace Kafkaesque.Tests
             return cancellationTokenSource.Token;
         }
 
-        protected string GetLogDirectoryPath() => Path.Combine(Using(new TemporaryTestDirectory()), "log");
+        protected string GetLogDirectoryPath()
+        {
+            var logDirectoryPath = Path.Combine(Using(new TemporaryTestDirectory()), "log");
+
+            return logDirectoryPath;
+        }
 
         protected KafkaesqueFixtureBase() => SetLogLevel(LogEventLevel.Verbose);
 
