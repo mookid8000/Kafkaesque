@@ -276,10 +276,6 @@ namespace Kafkaesque
 
                     _logger.Verbose("Waiting for worker loop to exit");
 
-                    if (_workerTask.Status == TaskStatus.WaitingForActivation)
-                    {
-                    }
-
                     if (!_workerTask.Wait(timeout))
                     {
                         _logger.Warning(
@@ -290,6 +286,9 @@ namespace Kafkaesque
             }
             finally
             {
+                _currentWriter?.BaseStream?.Dispose();
+                _currentWriter?.Dispose();
+
                 try
                 {
                     if (_lockFileHandle != null)

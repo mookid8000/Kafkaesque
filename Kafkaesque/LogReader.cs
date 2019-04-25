@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Text;
 using System.Threading;
 using Kafkaesque.Internals;
@@ -41,6 +40,7 @@ namespace Kafkaesque
                     // if we still can't read, wait a short while and continue
                     if (!nextCanRead)
                     {
+                        reader?.Dispose();
                         Thread.Sleep(200);
                         continue;
                     }
@@ -49,6 +49,8 @@ namespace Kafkaesque
                     if (!string.IsNullOrWhiteSpace(filePath))
                     {
                         _logger.Verbose("Next file {filePath} can be read", nextFilePath);
+
+                        reader?.Dispose();
 
                         (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 
