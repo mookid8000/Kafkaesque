@@ -54,7 +54,7 @@ namespace Kafkaesque.Tests
             Using(writer);
 
             var readerThreads = Enumerable.Range(0, readerCount)
-                .Select(r =>
+                .Select(n =>
                 {
                     var logReader = logDirectory.GetReader();
                     var readMessages = new ConcurrentQueue<string>();
@@ -77,7 +77,7 @@ namespace Kafkaesque.Tests
                         })
                         {
                             IsBackground = true,
-                            Name = $"Reader thread {r}"
+                            Name = $"Reader thread {n}"
                         },
 
                         Messages = readMessages
@@ -87,7 +87,29 @@ namespace Kafkaesque.Tests
 
             readerThreads.ForEach(a => a.Thread.Start());
 
-            await writer.WriteManyAsync(messagesToWrite.Select(Encoding.UTF8.GetBytes), cancellationToken);
+            var writerThreads = Enumerable.Range(0, 10)
+                .Select(n => new Thread(() =>
+                {
+                    while (messagesToWrite.TryDequeue(out var message))
+                    {
+                        writer.WriteAsync(Encoding.UTF8.GetBytes(message), cancellationToken);
+                    }
+                })
+                {
+                    Name = $"Writer thread {n}"
+                })
+                .ToList();
+
+            writerThreads.ForEach(t => t.Start());
+
+            writerThreads.ForEach(t =>
+            {
+                if (t.Join(TimeSpan.FromSeconds(20))) return;
+
+                throw new TimeoutException($"Writer thread named '{t.Name}' did not finish writing withing 20 s timeout");
+            });
+
+            //await writer.WriteManyAsync(messagesToWrite.Select(Encoding.UTF8.GetBytes), cancellationToken);
 
             try
             {
