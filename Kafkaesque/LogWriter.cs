@@ -14,6 +14,9 @@ using Serilog;
 
 namespace Kafkaesque
 {
+    /// <summary>
+    /// Log writer for writing logs :)
+    /// </summary>
     public class LogWriter : IDisposable
     {
         const string LineTerminator = "#";
@@ -41,15 +44,21 @@ namespace Kafkaesque
             _workerTask = Task.Run(Run);
         }
 
+        /// <summary>
+        /// Enqueues a write operation for the given <paramref name="data"/>, returning a <see cref="Task"/> for its completion.
+        /// </summary>
         public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
             EnsureIsNotDisposing();
 
-            var writeTask = new WriteTask(new[]{data}, cancellationToken);
+            var writeTask = new WriteTask(new[] { data }, cancellationToken);
             _buffer.Enqueue(writeTask);
             return writeTask.Task;
         }
 
+        /// <summary>
+        /// Enqueues write operations for the given <paramref name="dataSequence"/>, returning a <see cref="Task"/> for its completion.
+        /// </summary>
         public Task WriteManyAsync(IEnumerable<byte[]> dataSequence, CancellationToken cancellationToken = default)
         {
             EnsureIsNotDisposing();
@@ -251,7 +260,7 @@ namespace Kafkaesque
                 }
             }
 
-            throw new IOException($"Could not acquire lock file '{lockFilePath}' within {timeout} timeout");
+            throw new TimeoutException($"Could not acquire lock file '{lockFilePath}' within {timeout} timeout");
         }
 
         StreamWriter GetWriter(string filePath)
@@ -263,6 +272,9 @@ namespace Kafkaesque
             return new StreamWriter(stream, Encoding.UTF8);
         }
 
+        /// <summary>
+        /// Disposes the writer, giving the background writer task up to 3 s to finish writing
+        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;
@@ -285,24 +297,19 @@ namespace Kafkaesque
                             timeout, _workerTask.Status);
                     }
                 }
+
+                _currentWriter?.BaseStream.Dispose();
+                _currentWriter?.Dispose();
+                _currentWriter = null;
+
+                if (_lockFileHandle != null)
+                {
+                    _lockFileHandle.Dispose();
+                    _logger.Verbose("Lock file released");
+                }
             }
             finally
             {
-                _currentWriter?.BaseStream?.Dispose();
-                _currentWriter?.Dispose();
-
-                try
-                {
-                    if (_lockFileHandle != null)
-                    {
-                        _lockFileHandle.Dispose();
-                        _logger.Verbose("Lock file released");
-                    }
-                }
-                catch
-                {
-                }
-
                 _disposed = true;
             }
         }

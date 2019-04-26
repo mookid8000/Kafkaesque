@@ -44,7 +44,7 @@ namespace Kafkaesque.Tests
 
             Using(writer);
 
-            var exception = Assert.Throws<IOException>(() => log.GetWriter());
+            var exception = Assert.Throws<TimeoutException>(() => log.GetWriter());
 
             Console.WriteLine(exception);
         }

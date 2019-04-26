@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Kafkaesque</name>
+    </assembly>
+    <members>
+        <member name="T:Kafkaesque.LogDirectory">
+            <summary>
+            Create an instance of this one to get started with Kafkaesque
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.IO.DirectoryInfo)">
+            <summary>
+            Creates a log directory, using the directory specified by <paramref name="directoryInfo"/> to store the files.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.String)">
+            <summary>
+            Creates a log directory, using the directory specified by <paramref name="directoryPath"/> to store the files.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogDirectory.GetWriter(System.Threading.CancellationToken)">
+            <summary>
+            Gets a log writer. This requires exclusive access to the log directory, so it will acquire a file-based lock on it.
+            If the lock cannot be acquired within 20 s, a <see cref="T:System.TimeoutException"/> is thrown.
+            Optionally pass a <paramref name="cancellationToken"/> if you want to be able to abort the acquisition attempt
+            prematurely.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogDirectory.GetReader">
+            <summary>
+            Gets a log reader.
+            </summary>
+        </member>
+        <member name="T:Kafkaesque.LogEvent">
+            <summary>
+            Represents on single log event (in the form of a byte array) along with the position
+            from which to resume reading in order to read the next event and on
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.LogEvent.Data">
+            <summary>
+            Gets the data
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.LogEvent.FileNumber">
+            <summary>
+            Gets the file number
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.LogEvent.BytePosition">
+            <summary>
+            Gets the position of the underlying stream
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogEvent.#ctor(System.Byte[],System.Int32,System.Int32)">
+            <summary>
+            Constructs the log event
+            </summary>
+        </member>
+        <member name="T:Kafkaesque.LogReader">
+            <summary>
+            Log reader for reading logs :)
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogReader.Read(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
+            <summary>
+            Initiates a read operation. 
+            </summary>
+            <param name="fileNumber"></param>
+            <param name="bytePosition"></param>
+            <param name="cancellationToken"></param>
+            <param name="throwWhenCancelled"></param>
+            <returns></returns>
+        </member>
+        <member name="T:Kafkaesque.LogWriter">
+            <summary>
+            Log writer for writing logs :)
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogWriter.WriteAsync(System.Byte[],System.Threading.CancellationToken)">
+            <summary>
+            Enqueues a write operation for the given <paramref name="data"/>, returning a <see cref="T:System.Threading.Tasks.Task"/> for its completion.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogWriter.WriteManyAsync(System.Collections.Generic.IEnumerable{System.Byte[]},System.Threading.CancellationToken)">
+            <summary>
+            Enqueues write operations for the given <paramref name="dataSequence"/>, returning a <see cref="T:System.Threading.Tasks.Task"/> for its completion.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogWriter.Dispose">
+            <summary>
+            Disposes the writer, giving the background writer task up to 3 s to finish writing
+            </summary>
+        </member>
+    </members>
+</doc>

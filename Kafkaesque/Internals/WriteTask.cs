@@ -2,16 +2,17 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Kafkaesque
+namespace Kafkaesque.Internals
 {
-    class WriteTask
+    struct WriteTask
     {
-        readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>();
+        readonly TaskCompletionSource<object> _taskCompletionSource;
 
         public WriteTask(byte[][] data, CancellationToken cancellationToken)
         {
-            cancellationToken.Register(TryCancelTask);
             Data = data;
+            _taskCompletionSource = new TaskCompletionSource<object>();
+            cancellationToken.Register(TryCancelTask);
         }
 
         public byte[][] Data { get; }

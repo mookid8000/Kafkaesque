@@ -8,6 +8,9 @@ using Serilog;
 
 namespace Kafkaesque
 {
+    /// <summary>
+    /// Log reader for reading logs :)
+    /// </summary>
     public class LogReader
     {
         readonly string _directoryPath;
@@ -19,35 +22,20 @@ namespace Kafkaesque
             _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
         }
 
-        //public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
-        //{
-        //    _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
-
-        //    while (true)
-        //    {
-        //        if (throwWhenCancelled)
-        //        {
-        //            cancellationToken.ThrowIfCancellationRequested();
-        //        }
-        //        else if (cancellationToken.IsCancellationRequested)
-        //        {
-        //            yield break;
-        //        }
-
-        //        var (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
-
-        //        if (!canRead)
-        //        {
-        //            var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
-
-        //        }
-
-
-        //    }
-        //}
-
+        /// <summary>
+        /// Initiates a read operation. 
+        /// </summary>
+        /// <param name="fileNumber"></param>
+        /// <param name="bytePosition"></param>
+        /// <param name="cancellationToken"></param>
+        /// <param name="throwWhenCancelled"></param>
+        /// <returns></returns>
         public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
         {
+            if (fileNumber < -1) throw new ArgumentOutOfRangeException(nameof(fileNumber), fileNumber, "Please pass either -1 (to start reading from the beginning) or an actual file number");
+            if (bytePosition < -1) throw new ArgumentOutOfRangeException(nameof(bytePosition), bytePosition, "Please pass either -1 (to start reading from the beginning) or an actual byte position");
+            if (bytePosition >= 0 && fileNumber == -1) throw new ArgumentException($"Cannot start reading from byte position {bytePosition} when file number is -1, because that doesn't make sense");
+
             _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
 
             // use these two to remember if we've done an empty read, in which case we might try and advance the file pointer
