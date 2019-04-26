@@ -117,7 +117,7 @@ namespace Kafkaesque.Tests
                         await r.Messages.WaitFor(
                             completionExpression: q => q.Count == count,
                             invariantExpression: q => q.Count <= count,
-                            timeoutSeconds: 45
+                            timeoutSeconds: 90
                         );
                     }
                     catch (Exception exception)
