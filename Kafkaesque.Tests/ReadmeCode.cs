@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
+#pragma warning disable 1998
 
 namespace Kafkaesque.Tests
 {

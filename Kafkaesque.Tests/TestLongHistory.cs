@@ -8,6 +8,7 @@ using Kafkaesque.Tests.Extensions;
 using NUnit.Framework;
 using Serilog.Events;
 using Testy.General;
+#pragma warning disable 1998
 
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleOther
