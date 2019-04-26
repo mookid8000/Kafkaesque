@@ -1,11 +1,12 @@
-﻿using System.Threading;
+﻿using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Kafkaesque.Tests
 {
     [TestFixture]
-    public class ReadmeCode
+    [Ignore("Just example code, some of the tests never exit")]
+    public class ReadmeCode : KafkaesqueFixtureBase
     {
         [Test]
         public async Task Writer()
@@ -37,7 +38,7 @@ namespace Kafkaesque.Tests
         [Test]
         public async Task Reader_Cancellation()
         {
-            var cancellationToken = new CancellationTokenSource().Token;
+            var cancellationToken = CancelAfter(TimeSpan.FromSeconds(3));
 
             var logDirectory = new LogDirectory(@"C:\data\kafkaesque");
 
@@ -54,6 +55,8 @@ namespace Kafkaesque.Tests
         [Test]
         public void GetPositionFromLogEvent()
         {
+            var cancellationToken = CancelAfter(TimeSpan.FromSeconds(3));
+
             var logDirectory = new LogDirectory(@"C:\data\kafkaesque");
 
             var logReader = logDirectory.GetReader();
@@ -61,7 +64,7 @@ namespace Kafkaesque.Tests
             var fileNumber = -1;    //< this assumes we haven't
             var bytePosition = -1;  //< read anything before
 
-            foreach (var logEvent in logReader.Read(fileNumber: fileNumber, bytePosition: bytePosition))
+            foreach (var logEvent in logReader.Read(fileNumber: fileNumber, bytePosition: bytePosition, cancellationToken: cancellationToken))
             {
                 var bytes = logEvent.Data;
 

@@ -76,7 +76,7 @@ from each `LogEvent` returned from the reader:
 var fileNumber = -1;    //< this assumes we haven't
 var bytePosition = -1;  //< read anything before
 
-foreach (var logEvent in logReader.Read(fileNumber: fileNumber, bytePosition: bytePosition))
+foreach (var logEvent in logReader.Read(fileNumber: fileNumber, bytePosition: bytePosition, cancellationToken: cancellationToken))
 {
     var bytes = logEvent.Data;
 
