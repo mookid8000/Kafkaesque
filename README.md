@@ -30,7 +30,7 @@ using(var logWriter = logDirectory.GetWriter())
 to write a little byte array to the file.
 
 In an actual application, you would most likely use a `ConcurrentStack<IDisposable>` or an IoC container to
-keep the writer instance around.
+ensure proper disposal on exit, and then you would keep the writer instance as a singleton somewhere.
 
 
 ### Reading
