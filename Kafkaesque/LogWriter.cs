@@ -45,7 +45,7 @@ namespace Kafkaesque
         {
             EnsureIsNotDisposing();
 
-            var writeTask = new WriteTask(data, cancellationToken);
+            var writeTask = new WriteTask(new[]{data}, cancellationToken);
             _buffer.Enqueue(writeTask);
             return writeTask.Task;
         }
@@ -56,9 +56,9 @@ namespace Kafkaesque
 
             var tasks = new List<Task>();
 
-            foreach (var data in dataSequence)
+            foreach (var batch in dataSequence.Batch(100))
             {
-                var writeTask = new WriteTask(data, cancellationToken);
+                var writeTask = new WriteTask(batch.ToArray(), cancellationToken);
                 _buffer.Enqueue(writeTask);
                 tasks.Add(writeTask.Task);
             }
@@ -190,25 +190,27 @@ namespace Kafkaesque
 
             foreach (var task in writeTasks)
             {
-                var data = task.Data;
-                var line = Convert.ToBase64String(data);
-                _currentWriter.Write(line);
-                _currentWriter.WriteLine(LineTerminator);
-                _approxBytesWritten += line.Length + 1;
-                flushNeeded = true;
-
-                if (_approxBytesWritten > ApproxMaxFileLength)
+                foreach (var data in task.Data)
                 {
-                    await _currentWriter.FlushAsync();
-                    flushNeeded = false;
-                    _currentWriter.Dispose();
+                    var line = Convert.ToBase64String(data);
+                    _currentWriter.Write(line);
+                    _currentWriter.WriteLine(LineTerminator);
+                    _approxBytesWritten += line.Length + 1;
+                    flushNeeded = true;
 
-                    var nextFileNumber = dirSnap.LastFile().FileNumber + 1;
-                    var nextFilePath = dirSnap.GetFilePath(nextFileNumber);
-                    dirSnap.RegisterFile(nextFilePath);
+                    if (_approxBytesWritten > ApproxMaxFileLength)
+                    {
+                        await _currentWriter.FlushAsync();
+                        flushNeeded = false;
+                        _currentWriter.Dispose();
 
-                    _approxBytesWritten = 0;
-                    _currentWriter = GetWriter(nextFilePath);
+                        var nextFileNumber = dirSnap.LastFile().FileNumber + 1;
+                        var nextFilePath = dirSnap.GetFilePath(nextFileNumber);
+                        dirSnap.RegisterFile(nextFilePath);
+
+                        _approxBytesWritten = 0;
+                        _currentWriter = GetWriter(nextFilePath);
+                    }
                 }
             }
 

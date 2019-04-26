@@ -19,6 +19,33 @@ namespace Kafkaesque
             _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
         }
 
+        //public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
+        //{
+        //    _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
+
+        //    while (true)
+        //    {
+        //        if (throwWhenCancelled)
+        //        {
+        //            cancellationToken.ThrowIfCancellationRequested();
+        //        }
+        //        else if (cancellationToken.IsCancellationRequested)
+        //        {
+        //            yield break;
+        //        }
+
+        //        var (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
+
+        //        if (!canRead)
+        //        {
+        //            var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
+
+        //        }
+
+
+        //    }
+        //}
+
         public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
         {
             _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
@@ -42,6 +69,8 @@ namespace Kafkaesque
                 // if we can't read from here, try the next file
                 if (!canRead || !didReadEvents)
                 {
+                    reader?.Dispose();
+
                     _logger.Verbose("Could not read from file {fileNumber} position {bytePosition} - trying next file", fileNumber, bytePosition);
 
                     var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
@@ -49,7 +78,6 @@ namespace Kafkaesque
                     // if we still can't read, wait a short while and continue
                     if (!nextCanRead)
                     {
-                        reader?.Dispose();
                         Thread.Sleep(200);
                         continue;
                     }
@@ -58,8 +86,6 @@ namespace Kafkaesque
                     if (!string.IsNullOrWhiteSpace(filePath))
                     {
                         _logger.Verbose("Next file {filePath} can be read", nextFilePath);
-
-                        reader?.Dispose();
 
                         (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 

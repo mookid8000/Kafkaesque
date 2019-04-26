@@ -8,13 +8,13 @@ namespace Kafkaesque
     {
         readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>();
 
-        public WriteTask(byte[] data, CancellationToken cancellationToken)
+        public WriteTask(byte[][] data, CancellationToken cancellationToken)
         {
             cancellationToken.Register(TryCancelTask);
             Data = data;
         }
 
-        public byte[] Data { get; }
+        public byte[][] Data { get; }
 
         public Task Task => _taskCompletionSource.Task;
 

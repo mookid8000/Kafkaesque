@@ -31,8 +31,10 @@ namespace Kafkaesque.Tests.Extensions
                         {
                             var list = queue.ToList();
 
-                            var itemsToPrint = list.Count > 1000
-                                ? list.Take(500).Concat(list.Skip(list.Count - 500)).ToList()
+                            const int maxListLength = 100;
+
+                            var itemsToPrint = list.Count > maxListLength
+                                ? list.Take(maxListLength/2).Concat(list.Skip(list.Count - maxListLength/2)).ToList()
                                 : list.ToList();
 
                             var listWasShortened = itemsToPrint.Count < list.Count;
@@ -62,8 +64,10 @@ to be satisfied. Queue contents{(listWasShortened ? $" (shortened from {list.Cou
                 {
                     var list = queue.ToList();
 
-                    var itemsToPrint = list.Count > 1000
-                        ? list.Take(500).Concat(list.Skip(list.Count - 500)).ToList()
+                    const int maxListLength = 100;
+
+                    var itemsToPrint = list.Count > maxListLength
+                        ? list.Take(maxListLength/2).Concat(list.Skip(list.Count - maxListLength/2)).ToList()
                         : list.ToList();
 
                     var listWasShortened = itemsToPrint.Count < list.Count;

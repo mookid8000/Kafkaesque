@@ -14,6 +14,20 @@ namespace Kafkaesque.Tests
     [TestFixture]
     public class TestStress : KafkaesqueFixtureBase
     {
+        [TestCase(1, 1)]
+        [TestCase(10, 1)]
+        [TestCase(100, 1)]
+        [TestCase(1000, 1)]
+        [TestCase(10000, 1)]
+        [TestCase(100000, 1)]
+        [TestCase(1000000, 1)]
+        [TestCase(1, 2)]
+        [TestCase(10, 2)]
+        [TestCase(100, 2)]
+        [TestCase(1000, 2)]
+        [TestCase(10000, 2)]
+        [TestCase(100000, 2)]
+        [TestCase(1000000, 2)]
         [TestCase(1000000, 3)]
         [TestCase(1000000, 4)]
         [TestCase(1000000, 5)]
@@ -22,20 +36,10 @@ namespace Kafkaesque.Tests
         [TestCase(1000000, 8)]
         [TestCase(1000000, 9)]
         [TestCase(1000000, 10)]
-        [TestCase(1, 2)]
-        [TestCase(10, 2)]
-        [TestCase(100, 2)]
-        [TestCase(1000, 2)]
-        [TestCase(10000, 2)]
-        [TestCase(100000, 2)]
-        [TestCase(1000000, 2)]
-        [TestCase(1, 1)]
-        [TestCase(10, 1)]
-        [TestCase(100, 1)]
-        [TestCase(1000, 1)]
-        [TestCase(10000, 1)]
-        [TestCase(100000, 1)]
-        [TestCase(1000000, 1)]
+        [TestCase(1000000, 20)]
+        [TestCase(1000000, 30)]
+        [TestCase(1000000, 40)]
+        [TestCase(1000000, 50)]
         public async Task ItWorks(int count, int readerCount)
         {
             SetLogLevel(LogEventLevel.Information);
@@ -102,13 +106,6 @@ namespace Kafkaesque.Tests
 
             writerThreads.ForEach(t => t.Start());
 
-            writerThreads.ForEach(t =>
-            {
-                if (t.Join(TimeSpan.FromSeconds(20))) return;
-
-                throw new TimeoutException($"Writer thread named '{t.Name}' did not finish writing withing 20 s timeout");
-            });
-
             //await writer.WriteManyAsync(messagesToWrite.Select(Encoding.UTF8.GetBytes), cancellationToken);
 
             try
@@ -120,7 +117,7 @@ namespace Kafkaesque.Tests
                         await r.Messages.WaitFor(
                             completionExpression: q => q.Count == count,
                             invariantExpression: q => q.Count <= count,
-                            timeoutSeconds: 10
+                            timeoutSeconds: 30
                         );
                     }
                     catch (Exception exception)
@@ -135,6 +132,13 @@ namespace Kafkaesque.Tests
                 cancellationTokenSource.Cancel();
                 throw;
             }
+
+            writerThreads.ForEach(t =>
+            {
+                if (t.Join(TimeSpan.FromSeconds(2))) return;
+
+                throw new TimeoutException($"Writer thread named '{t.Name}' did not finish writing withing 20 s timeout");
+            });
         }
     }
 }
