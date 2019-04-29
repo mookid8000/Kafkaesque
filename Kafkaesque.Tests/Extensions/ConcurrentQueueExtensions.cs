@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
 
 namespace Kafkaesque.Tests.Extensions
 {
     static class ConcurrentQueueExtensions
     {
+        public static ConcurrentQueue<TItem> ToConcurrentQueue<TItem>(this IEnumerable<TItem> items) =>
+            new ConcurrentQueue<TItem>(items);
+
         public static async Task WaitFor<TItem>(this ConcurrentQueue<TItem> queue,
             Expression<Func<ConcurrentQueue<TItem>, bool>> completionExpression,
             Expression<Func<ConcurrentQueue<TItem>, bool>> invariantExpression = null,

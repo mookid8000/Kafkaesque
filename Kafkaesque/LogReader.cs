@@ -70,17 +70,22 @@ namespace Kafkaesque
                         continue;
                     }
 
+                    _logger.Verbose("Next file {filePath} can be read", nextFilePath);
+
                     // if we can read, we need to be absolutely sure that we've read everything from the previous file - therefore:
                     if (!string.IsNullOrWhiteSpace(filePath))
                     {
-                        _logger.Verbose("Next file {filePath} can be read", nextFilePath);
-
                         (reader, filePath, canRead) = GetStreamReader(fileNumber, bytePosition);
 
+                        // if we can read from the previous reader
                         if (canRead)
                         {
+                            // we need to dispose this new one
+                            nextReader?.Dispose();
+
                             _logger.Verbose("Ensuring that we read the last of the file {filePath}", filePath);
 
+                            // read the last parts from the old file
                             foreach (var message in ReadUsing(reader, filePath, cancellationToken, throwWhenCancelled))
                             {
                                 fileNumber = message.FileNumber;
@@ -88,11 +93,16 @@ namespace Kafkaesque
 
                                 yield return message;
                             }
+
+                            reader?.Dispose();
+
+                            _logger.Verbose("Re-initializing reader for next file {filePath}", nextFilePath);
+
+                            // and then re-init the new reader
+                            (nextReader, nextFilePath, _) = GetStreamReader(fileNumber + 1, -1);
                         }
-                    }
-                    else
-                    {
-                        _logger.Verbose("So, we're reading from {filePath} now", nextFilePath);
+
+                        reader?.Dispose();
                     }
 
                     reader = nextReader;

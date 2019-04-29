@@ -13,10 +13,7 @@ namespace Kafkaesque.Internals
         {
             DirectoryPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
 
-            _files = Directory
-                .GetFiles(directoryPath, "log-*.dat")
-                .Select(FileSnap.Create)
-                .ToList();
+            _files = GetFiles(directoryPath);
         }
 
         public string DirectoryPath { get; }
@@ -34,6 +31,21 @@ namespace Kafkaesque.Internals
         public void RegisterFile(string filePath)
         {
             _files.Add(FileSnap.Create(filePath));
+        }
+
+        static List<FileSnap> GetFiles(string directoryPath)
+        {
+            try
+            {
+                return Directory
+                    .GetFiles(directoryPath, "log-*.dat")
+                    .Select(FileSnap.Create)
+                    .ToList();
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return new List<FileSnap>();
+            }
         }
     }
 }

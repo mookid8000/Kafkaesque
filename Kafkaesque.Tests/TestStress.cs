@@ -42,22 +42,39 @@ namespace Kafkaesque.Tests
         [TestCase(1000000, 50)]
         public async Task ItWorks(int count, int readerCount)
         {
+            await RunTest(count, readerCount);
+        }
+
+        [Test]
+        [Repeat(100)]
+        public async Task RepeatThis()
+        {
+            await RunTest(1000, 50);
+        }
+
+        async Task RunTest(int count, int readerCount)
+        {
             SetLogLevel(LogEventLevel.Information);
 
             var logDirectoryPath = GetLogDirectoryPath();
             var logDirectory = new LogDirectory(logDirectoryPath);
 
-            var originalMessages = Enumerable.Range(0, count).Select(n => $"THIS IS A STRING MESSAGE/{n}").ToList();
-            var messagesToWrite = new ConcurrentQueue<string>(originalMessages);
+            var messagesToWrite = Enumerable.Range(0, count)
+                .Select(n => $"THIS IS A STRING MESSAGE/{n}")
+                .ToConcurrentQueue();
 
             var cancellationTokenSource = new CancellationTokenSource();
+
+            Using(cancellationTokenSource);
+
             var cancellationToken = cancellationTokenSource.Token;
 
             var writer = logDirectory.GetWriter();
 
             Using(writer);
 
-            var readerThreads = Enumerable.Range(0, readerCount)
+            var readerThreads = Enumerable
+                .Range(0, readerCount)
                 .Select(n =>
                 {
                     var logReader = logDirectory.GetReader();
@@ -73,6 +90,10 @@ namespace Kafkaesque.Tests
                                 {
                                     readMessages.Enqueue(Encoding.UTF8.GetString(logEvent.Data));
                                 }
+                            }
+                            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                            {
+                                Console.WriteLine($"Thread {n} was cancelled");
                             }
                             catch (Exception exception)
                             {
@@ -117,27 +138,40 @@ namespace Kafkaesque.Tests
                         await r.Messages.WaitFor(
                             completionExpression: q => q.Count == count,
                             invariantExpression: q => q.Count <= count,
-                            timeoutSeconds: 90
+                            timeoutSeconds: 150
                         );
+
+                        Console.WriteLine($"Thread {r.Thread.Name} completed");
                     }
                     catch (Exception exception)
                     {
-                        throw new ApplicationException(
-                            $"Completion criteria not satisfied for thread with name '{r.Thread.Name}'", exception);
+                        var dupes = r.Messages.GroupBy(m => m)
+                            .Where(g => g.Count()>1)
+                            .ToList();
+
+                        if (dupes.Any())
+                        {
+                            throw new ApplicationException($@"Completion criteria not satisfied for thread with name '{r.Thread.Name}' - read the following duplicates:
+
+{string.Join(Environment.NewLine, dupes.Select(g => $"    {g.Count()}: {g.Key}"))}
+
+", exception);
+                        }
+
+                        throw new ApplicationException($@"Completion criteria not satisfied for thread with name '{r.Thread.Name}'", exception);
                     }
                 }));
             }
-            catch
+            finally
             {
                 cancellationTokenSource.Cancel();
-                throw;
             }
 
             writerThreads.ForEach(t =>
             {
                 if (t.Join(TimeSpan.FromSeconds(2))) return;
 
-                throw new TimeoutException($"Writer thread named '{t.Name}' did not finish writing withing 20 s timeout");
+                throw new TimeoutException($"Writer thread named '{t.Name}' did not finish writing within 20 s timeout");
             });
         }
     }
