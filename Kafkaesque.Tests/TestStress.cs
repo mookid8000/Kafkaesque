@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kafkaesque.Tests.Extensions;
 using NUnit.Framework;
+using Serilog;
 using Serilog.Events;
 // ReSharper disable ArgumentsStyleAnonymousFunction
 
@@ -42,6 +44,20 @@ namespace Kafkaesque.Tests
         [TestCase(1000000, 50)]
         public async Task ItWorks(int count, int readerCount)
         {
+            var logFilePathFormat = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", $@"log-{count}-{readerCount}.txt");
+
+            Using(new AlternativeLogger(c => c.WriteTo.RollingFile(logFilePathFormat).MinimumLevel.Verbose()));
+
+            Console.WriteLine($"Writing logs to file://{logFilePathFormat}");
+
+            Log.Information($@"
+---------------------------------------------------------------------------------------------------------------------
+
+    Executing test with count = {count}, reader count = {readerCount}
+
+---------------------------------------------------------------------------------------------------------------------
+");
+
             await RunTest(count, readerCount);
         }
 
