@@ -6,6 +6,7 @@ using Serilog.Core;
 using Serilog.Events;
 using Testy;
 using Testy.Files;
+using Testy.General;
 
 namespace Kafkaesque.Tests
 {
@@ -27,6 +28,19 @@ namespace Kafkaesque.Tests
         {
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSource.CancelAfter(delay);
+            return cancellationTokenSource.Token;
+        }
+
+        protected CancellationToken CancelOnDisposal()
+        {
+            var cancellationTokenSource = new CancellationTokenSource();
+            
+            Using(cancellationTokenSource);
+            
+            var callback = new DisposableCallback(() => cancellationTokenSource.Cancel());
+            
+            Using(callback);
+
             return cancellationTokenSource.Token;
         }
 

@@ -23,6 +23,99 @@ namespace Kafkaesque
         }
 
         /// <summary>
+        /// Initiates a read operation. Optionally resumes from a specific file number/byte position.
+        /// Reading is cancelled when the <paramref name="cancellationToken"/> is signaled. If <paramref name="throwWhenCancelled"/> is true,
+        /// an <see cref="OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
+        /// </summary>
+        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
+        {
+            if (fileNumber < -1) throw new ArgumentOutOfRangeException(nameof(fileNumber), fileNumber, "Please pass either -1 (to start reading from the beginning) or an actual file number");
+            if (bytePosition < -1) throw new ArgumentOutOfRangeException(nameof(bytePosition), bytePosition, "Please pass either -1 (to start reading from the beginning) or an actual byte position");
+            if (bytePosition >= 0 && fileNumber == -1) throw new ArgumentException($"Cannot start reading from byte position {bytePosition} when file number is -1, because that doesn't make sense");
+
+            _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
+
+            while (true)
+            {
+                if (throwWhenCancelled)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                else if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                var (reader, filePath, canRead) = fileNumber == -1
+                    ? GetStreamReader(0, -1)
+                    : GetStreamReader(fileNumber, bytePosition);
+
+                if (!canRead)
+                {
+                    Thread.Sleep(200);
+                    continue;
+                }
+
+                var didReadEvents = false;
+
+                foreach (var message in ReadUsing(reader, filePath, cancellationToken, throwWhenCancelled))
+                {
+                    fileNumber = message.FileNumber;
+                    bytePosition = message.BytePosition;
+
+                    yield return message;
+
+                    didReadEvents = true;
+                }
+
+                if (didReadEvents)
+                {
+                    Thread.Sleep(200);
+                    continue;
+                }
+
+                var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
+
+                if (!nextCanRead)
+                {
+                    Thread.Sleep(200);
+                    continue;
+                }
+
+                _logger.Verbose("Next file {filePath} seems to be ready for reading - ensuring that previous file has been fully read", nextFilePath);
+
+                // first: be absolutely sure that the previous reader does not have eny more events for us
+                var (prevReader, prevFilePath, prevCanRead) = GetStreamReader(fileNumber, bytePosition);
+
+                if (prevCanRead)
+                {
+                    _logger.Verbose("Reading the last of the previous file {filePath}", prevFilePath);
+
+                    foreach (var message in ReadUsing(prevReader, prevFilePath, cancellationToken, throwWhenCancelled))
+                    {
+                        fileNumber = message.FileNumber;
+                        bytePosition = message.BytePosition;
+
+                        yield return message;
+                    }
+                }
+                else
+                {
+                    _logger.Verbose("Could not read more from the previous file {filePath}", prevFilePath);
+                }
+
+                foreach (var message in ReadUsing(nextReader, nextFilePath, cancellationToken, throwWhenCancelled))
+                {
+                    fileNumber = message.FileNumber;
+                    bytePosition = message.BytePosition;
+
+                    yield return message;
+                }
+            }
+        }
+
+
+        /// <summary>
         /// Initiates a read operation. 
         /// </summary>
         /// <param name="fileNumber"></param>
@@ -30,7 +123,7 @@ namespace Kafkaesque
         /// <param name="cancellationToken"></param>
         /// <param name="throwWhenCancelled"></param>
         /// <returns></returns>
-        public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
+        public IEnumerable<LogEvent> Read2(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
         {
             if (fileNumber < -1) throw new ArgumentOutOfRangeException(nameof(fileNumber), fileNumber, "Please pass either -1 (to start reading from the beginning) or an actual file number");
             if (bytePosition < -1) throw new ArgumentOutOfRangeException(nameof(bytePosition), bytePosition, "Please pass either -1 (to start reading from the beginning) or an actual byte position");
@@ -59,7 +152,10 @@ namespace Kafkaesque
                 {
                     reader?.Dispose();
 
-                    _logger.Verbose("Could not read from file {fileNumber} position {bytePosition} - trying next file", fileNumber, bytePosition);
+                    if (fileNumber > -1)
+                    {
+                        _logger.Verbose("Could not read from file {fileNumber} position {bytePosition} - trying next file", fileNumber, bytePosition);
+                    }
 
                     var (nextReader, nextFilePath, nextCanRead) = GetStreamReader(fileNumber + 1, -1);
 
