@@ -298,7 +298,6 @@ namespace Kafkaesque
                     }
                 }
 
-                _currentWriter?.BaseStream.Dispose();
                 _currentWriter?.Dispose();
                 _currentWriter = null;
 
