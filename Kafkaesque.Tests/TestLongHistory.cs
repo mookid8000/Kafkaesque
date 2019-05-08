@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -44,10 +45,10 @@ namespace Kafkaesque.Tests
 
             // read it back
             var reader = logDirectory.GetReader();
-
+            var stopwatch = Stopwatch.StartNew();
             var expectedMessageNumber = 0;
 
-            foreach (var message in reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(10))).Take(count))
+            foreach (var message in reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(20))).Take(count))
             {
                 var text = Encoding.UTF8.GetString(message.Data);
                 var parts = text.Split('/');
@@ -80,6 +81,9 @@ namespace Kafkaesque.Tests
 
                 expectedMessageNumber++;
             }
+
+            var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+            Console.WriteLine($"Read {count} messages in {elapsedSeconds:0.0} s - that's {count/elapsedSeconds:0.0} msg/s");
 
             Assert.That(expectedMessageNumber, Is.EqualTo(count));
         }
@@ -133,10 +137,10 @@ namespace Kafkaesque.Tests
             });
 
             var reader = logDirectory.GetReader();
-
             var expectedMessageNumber = 0;
+            var stopwatch = Stopwatch.StartNew();
 
-            foreach (var message in reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(10))).Take(count))
+            foreach (var message in reader.Read(cancellationToken: CancelAfter(TimeSpan.FromSeconds(20))).Take(count))
             {
                 var text = Encoding.UTF8.GetString(message.Data);
                 var parts = text.Split('/');
@@ -169,6 +173,9 @@ namespace Kafkaesque.Tests
 
                 expectedMessageNumber++;
             }
+
+            var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+            Console.WriteLine($"Read {count} messages in {elapsedSeconds:0.0} s - that's {count/elapsedSeconds:0.0} msg/s");
 
             Assert.That(expectedMessageNumber, Is.EqualTo(count));
         }
