@@ -96,42 +96,42 @@ namespace Kafkaesque
         {
             // skip this for now
             return;
-            var cancellationToken = _cancellationTokenSource.Token;
+            //var cancellationToken = _cancellationTokenSource.Token;
 
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            //try
+            //{
+            //    while (!cancellationToken.IsCancellationRequested)
+            //    {
+            //        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
 
-                    try
-                    {
-                        var dirSnap = new DirSnap(_directoryPath);
-                        var filesToRemove = dirSnap.GetFiles().Skip(_settings.NumberOfFilesToKeep).ToList();
+            //        try
+            //        {
+            //            var dirSnap = new DirSnap(_directoryPath);
+            //            var filesToRemove = dirSnap.GetFiles().Skip(_settings.NumberOfFilesToKeep).ToList();
 
-                        foreach (var file in filesToRemove)
-                        {
-                            await DeleteFile(file, cancellationToken);
-                        }
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // ok
-                    }
-                    catch (Exception exception)
-                    {
-                        _logger.Warning(exception, "Error when cleaning up old files");
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // ok
-            }
-            catch (Exception exception)
-            {
-                _logger.Error(exception, "Unhandled exception, cleaner loop failed");
-            }
+            //            foreach (var file in filesToRemove)
+            //            {
+            //                await DeleteFile(file, cancellationToken);
+            //            }
+            //        }
+            //        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            //        {
+            //            // ok
+            //        }
+            //        catch (Exception exception)
+            //        {
+            //            _logger.Warning(exception, "Error when cleaning up old files");
+            //        }
+            //    }
+            //}
+            //catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            //{
+            //    // ok
+            //}
+            //catch (Exception exception)
+            //{
+            //    _logger.Error(exception, "Unhandled exception, cleaner loop failed");
+            //}
         }
 
         async Task RunWorker()
@@ -265,24 +265,29 @@ namespace Kafkaesque
                         var nextFilePath = dirSnap.GetFilePath(nextFileNumber);
                         dirSnap.RegisterFile(nextFilePath);
 
+                        _approxBytesWritten = 0;
+                        _currentWriter = GetWriter(nextFilePath);
+
                         var allFiles = dirSnap.GetFiles().ToList();
-                        while (allFiles.Count > _settings.NumberOfFilesToKeep)
+                        
+                        var filesToDelete = allFiles
+                            .Take(allFiles.Count - _settings.NumberOfFilesToKeep)
+                            .ToList();
+
+                        foreach (var file in filesToDelete)
                         {
                             try
                             {
-                                var file = allFiles.First();
                                 File.Delete(file.FilePath);
                                 dirSnap.RemoveFile(file);
                                 _logger.Verbose("Deleted file {filePath}", file.FilePath);
                             }
-                            catch
+                            catch (Exception exception)
                             {
+                                _logger.Information("Could not deleted file {filePath}: {message}", file.FilePath, exception.Message);
                                 break;
                             }
                         }
-
-                        _approxBytesWritten = 0;
-                        _currentWriter = GetWriter(nextFilePath);
                     }
                 }
             }
