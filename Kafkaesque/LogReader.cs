@@ -14,11 +14,13 @@ namespace Kafkaesque
     public class LogReader
     {
         readonly string _directoryPath;
+        readonly Settings _settings;
         readonly ILogger _logger;
 
-        internal LogReader(string directoryPath)
+        internal LogReader(string directoryPath, Settings settings)
         {
             _directoryPath = directoryPath;
+            _settings = settings;
             _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
         }
 

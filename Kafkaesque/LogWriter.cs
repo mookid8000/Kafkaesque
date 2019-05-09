@@ -10,6 +10,7 @@ using Kafkaesque.Internals;
 using Serilog;
 // ReSharper disable InvertIf
 // ReSharper disable MethodSupportsCancellation
+// ReSharper disable ArgumentsStyleLiteral
 #pragma warning disable 4014
 
 namespace Kafkaesque
@@ -20,11 +21,11 @@ namespace Kafkaesque
     public class LogWriter : IDisposable
     {
         const string LineTerminator = "#";
-        const long ApproxMaxFileLength = 10 * 1024 * 1024;
 
         readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         readonly ConcurrentQueue<WriteTask> _buffer = new ConcurrentQueue<WriteTask>();
         readonly string _directoryPath;
+        readonly Settings _settings;
         readonly Task _workerTask;
         readonly ILogger _logger;
 
@@ -34,12 +35,13 @@ namespace Kafkaesque
         bool _disposed;
         long _approxBytesWritten;
 
-        internal LogWriter(string directoryPath, CancellationToken cancellationToken)
+        internal LogWriter(string directoryPath, CancellationToken cancellationToken, Settings settings)
         {
             _directoryPath = directoryPath;
+            _settings = settings;
             _logger = Log.ForContext<LogWriter>().ForContext("dir", directoryPath);
 
-            AcquireLockFile(directoryPath, cancellationToken);
+            AcquireLockFile(directoryPath, cancellationToken, settings.WriteLockAcquisitionTimeoutSeconds);
 
             _workerTask = Task.Run(Run);
         }
@@ -207,7 +209,7 @@ namespace Kafkaesque
                     _approxBytesWritten += line.Length + 1;
                     flushNeeded = true;
 
-                    if (_approxBytesWritten > ApproxMaxFileLength)
+                    if (_approxBytesWritten > _settings.ApproximateMaximumFileLength)
                     {
                         await _currentWriter.FlushAsync();
                         flushNeeded = false;
@@ -229,11 +231,11 @@ namespace Kafkaesque
             }
         }
 
-        void AcquireLockFile(string directoryPath, CancellationToken cancellationToken)
+        void AcquireLockFile(string directoryPath, CancellationToken cancellationToken, int timeoutSeconds)
         {
             var stopwatch = Stopwatch.StartNew();
             var lockFilePath = Path.Combine(directoryPath, "kafkaesque.lockfile");
-            var timeout = TimeSpan.FromSeconds(20);
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
             var lockFileTimeoutMessageLogged = false;
 
             _logger.Verbose("Acquiring lock file {lockFilePath}", lockFilePath);
