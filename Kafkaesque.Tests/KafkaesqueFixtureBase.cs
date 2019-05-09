@@ -46,7 +46,9 @@ namespace Kafkaesque.Tests
 
         protected string GetLogDirectoryPath()
         {
-            var logDirectoryPath = Path.Combine(Using(new TemporaryTestDirectory()), "log");
+            var temporaryTestDirectory = Using(new TemporaryTestDirectory());
+
+            var logDirectoryPath = Path.Combine(temporaryTestDirectory, "log");
 
             return logDirectoryPath;
         }
