@@ -4,3 +4,7 @@
 
 * Boom! Initial version.
 
+## 0.0.5
+
+* Ability to configure a few things
+* Can delete files now
