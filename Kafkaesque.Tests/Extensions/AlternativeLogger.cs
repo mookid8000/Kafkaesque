@@ -5,7 +5,7 @@ namespace Kafkaesque.Tests.Extensions
 {
     public class AlternativeLogger : IDisposable
     {
-        readonly ILogger _previousLogger = Log.Logger;
+        readonly Serilog.ILogger _previousLogger = Log.Logger;
 
         public AlternativeLogger(Action<LoggerConfiguration> configure)
         {

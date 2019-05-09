@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Kafkaesque.Internals;
-using Serilog;
 
 namespace Kafkaesque
 {
@@ -19,9 +18,9 @@ namespace Kafkaesque
 
         internal LogReader(string directoryPath, Settings settings)
         {
-            _directoryPath = directoryPath;
-            _settings = settings;
-            _logger = Log.ForContext<LogReader>().ForContext("dir", directoryPath);
+            _directoryPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _logger = settings.Logger;
         }
 
         /// <summary>
@@ -35,7 +34,7 @@ namespace Kafkaesque
             if (bytePosition < -1) throw new ArgumentOutOfRangeException(nameof(bytePosition), bytePosition, "Please pass either -1 (to start reading from the beginning) or an actual byte position");
             if (bytePosition >= 0 && fileNumber == -1) throw new ArgumentException($"Cannot start reading from byte position {bytePosition} when file number is -1, because that doesn't make sense");
 
-            _logger.Verbose("Initiating read from file {fileNumber} position {bytePosition}", fileNumber, bytePosition);
+            _logger.Verbose($"Initiating read from file {fileNumber} position {bytePosition}");
 
             while (true)
             {
@@ -84,14 +83,14 @@ namespace Kafkaesque
                     continue;
                 }
 
-                _logger.Verbose("Next file {filePath} seems to be ready for reading - ensuring that previous file has been fully read", nextFilePath);
+                _logger.Verbose($"Next file {nextFilePath} seems to be ready for reading - ensuring that previous file has been fully read");
 
                 // first: be absolutely sure that the previous reader does not have eny more events for us
                 var (prevReader, prevFilePath, prevCanRead) = GetStreamReader(fileNumber, bytePosition);
 
                 if (prevCanRead)
                 {
-                    _logger.Verbose("Reading the last of the previous file {filePath}", prevFilePath);
+                    _logger.Verbose($"Reading the last of the previous file {prevFilePath}");
 
                     foreach (var message in ReadUsing(prevReader, prevFilePath, cancellationToken, throwWhenCancelled))
                     {
@@ -103,7 +102,7 @@ namespace Kafkaesque
                 }
                 else
                 {
-                    _logger.Verbose("Could not read more from the previous file {filePath}", prevFilePath);
+                    _logger.Verbose($"Could not read more from the previous file {prevFilePath}");
                 }
 
                 foreach (var message in ReadUsing(nextReader, nextFilePath, cancellationToken, throwWhenCancelled))
@@ -143,7 +142,7 @@ namespace Kafkaesque
 
                         if (!line.EndsWith("#"))
                         {
-                            _logger.Verbose("Line {line} did not end with #", line);
+                            _logger.Verbose($"Line {line} did not end with #");
                             yield break;
                         }
 
@@ -151,7 +150,7 @@ namespace Kafkaesque
 
                         if (firstIteration)
                         {
-                            _logger.Verbose("Successfully initiated read operation from file {filePath}", filePath);
+                            _logger.Verbose($"Successfully initiated read operation from file {filePath}");
                             firstIteration = false;
                         }
 
@@ -166,7 +165,7 @@ namespace Kafkaesque
             {
                 if (lineCounter > 0)
                 {
-                    _logger.Verbose("Successfully read {count} lines from file {filePath}", lineCounter, filePath);
+                    _logger.Verbose($"Successfully read {lineCounter} lines from file {filePath}");
                 }
             }
         }
@@ -192,7 +191,7 @@ namespace Kafkaesque
                 }
                 catch (Exception exception)
                 {
-                    _logger.Verbose(exception, "Got exception when trying to open {filePath}", filePath);
+                    _logger.Verbose(exception, $"Got exception when trying to open {filePath}");
                 }
                 return null;
             }
@@ -210,7 +209,7 @@ namespace Kafkaesque
                 catch (Exception exception)
                 {
                     stream.Dispose();
-                    _logger.Verbose(exception, "Got exception when trying to file {filePath} stream to position {bytePosition}", filePath, bytePosition);
+                    _logger.Verbose(exception, $"Got exception when trying to file {filePath} stream to position {bytePosition}");
                     return (null, null, false);
                 }
             }

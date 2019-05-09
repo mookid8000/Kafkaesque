@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kafkaesque.Tests.Extensions;
 using NUnit.Framework;
+using Serilog;
+
 // ReSharper disable ArgumentsStyleAnonymousFunction
 
 namespace Kafkaesque.Tests
@@ -16,7 +18,7 @@ namespace Kafkaesque.Tests
         public async Task CheckBehaviorWhenWriterIsSlow()
         {
             var logDirectoryPath = GetLogDirectoryPath();
-            var logDirectory = new LogDirectory(logDirectoryPath);
+            var logDirectory = new LogDirectory(logDirectoryPath, new Settings(logger: new SerilogLogger()));
 
             var writer = Using(logDirectory.GetWriter());
 

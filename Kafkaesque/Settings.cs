@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kafkaesque.Internals;
 
 namespace Kafkaesque
 {
@@ -27,17 +28,24 @@ namespace Kafkaesque
         public int NumberOfFilesToKeep { get; }
 
         /// <summary>
+        /// Gets the logger to use for logging
+        /// </summary>
+        public ILogger Logger { get; }
+
+        /// <summary>
         /// Creates the settings
         /// </summary>
         public Settings(
             int writeLockAcquisitionTimeoutSeconds = 20,
             long approximateMaximumFileLength = 10 * 1024 * 1024,
-            int numberOfFilesToKeep = 100
+            int numberOfFilesToKeep = 100,
+            ILogger logger = null
         )
         {
             WriteLockAcquisitionTimeoutSeconds = writeLockAcquisitionTimeoutSeconds;
             ApproximateMaximumFileLength = approximateMaximumFileLength;
             NumberOfFilesToKeep = numberOfFilesToKeep;
+            Logger = logger ?? new NullLogger();
         }
 
         internal void Validate()

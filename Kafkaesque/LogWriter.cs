@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kafkaesque.Internals;
-using Serilog;
 // ReSharper disable InvertIf
 // ReSharper disable MethodSupportsCancellation
 // ReSharper disable ArgumentsStyleLiteral
@@ -40,9 +39,9 @@ namespace Kafkaesque
 
         internal LogWriter(string directoryPath, CancellationToken cancellationToken, Settings settings)
         {
-            _directoryPath = directoryPath;
-            _settings = settings;
-            _logger = Log.ForContext<LogWriter>().ForContext("dir", directoryPath);
+            _directoryPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _logger = settings.Logger;
 
             AcquireLockFile(directoryPath, cancellationToken, settings.WriteLockAcquisitionTimeoutSeconds);
 
@@ -213,7 +212,7 @@ namespace Kafkaesque
             {
                 await WriteTasksAsync(writeTasks, dirSnap);
 
-                _logger.Verbose("Successfully wrote batch of {count} messages", writeTasks.Count);
+                _logger.Verbose($"Successfully wrote batch of {writeTasks.Count} messages");
 
                 writeTasks.ForEach(task => task.Complete());
             }
@@ -269,7 +268,7 @@ namespace Kafkaesque
                         _currentWriter = GetWriter(nextFilePath);
 
                         var allFiles = dirSnap.GetFiles().ToList();
-                        
+
                         var filesToDelete = allFiles
                             .Take(allFiles.Count - _settings.NumberOfFilesToKeep)
                             .ToList();
@@ -280,11 +279,11 @@ namespace Kafkaesque
                             {
                                 File.Delete(file.FilePath);
                                 dirSnap.RemoveFile(file);
-                                _logger.Verbose("Deleted file {filePath}", file.FilePath);
+                                _logger.Verbose($"Deleted file {file.FilePath}");
                             }
                             catch (Exception exception)
                             {
-                                _logger.Information("Could not deleted file {filePath}: {message}", file.FilePath, exception.Message);
+                                _logger.Information($"Could not delete file {file.FilePath}: {exception.Message}");
                                 break;
                             }
                         }
@@ -305,7 +304,7 @@ namespace Kafkaesque
             var timeout = TimeSpan.FromSeconds(timeoutSeconds);
             var lockFileTimeoutMessageLogged = false;
 
-            _logger.Verbose("Acquiring lock file {lockFilePath}", lockFilePath);
+            _logger.Verbose($"Acquiring lock file {lockFilePath}");
 
             while (stopwatch.Elapsed < timeout)
             {
@@ -323,7 +322,7 @@ namespace Kafkaesque
 
                     if (stopwatch.Elapsed <= TimeSpan.FromSeconds(1) || lockFileTimeoutMessageLogged) continue;
 
-                    _logger.Verbose("Will wait up to {lockFileTimeout} for lock file to be acquired", timeout);
+                    _logger.Verbose($"Will wait up to {timeout} for lock file to be acquired");
 
                     lockFileTimeoutMessageLogged = true;
                 }
@@ -338,7 +337,7 @@ namespace Kafkaesque
             try
             {
                 File.Delete(filePath);
-                _logger.Verbose("Deleted file {filePath}", filePath);
+                _logger.Verbose($"Deleted file {filePath}");
             }
             catch (Exception exception)
             {
@@ -350,7 +349,7 @@ namespace Kafkaesque
         {
             var stream = File.Open(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
-            _logger.Verbose("Created new writer for file {filePath}", filePath);
+            _logger.Verbose($"Created new writer for file {filePath}");
 
             return new StreamWriter(stream, Encoding.UTF8);
         }
@@ -375,9 +374,7 @@ namespace Kafkaesque
 
                     if (!_workerTask.Wait(timeout))
                     {
-                        _logger.Warning(
-                            "Worker loop did not finish working within {timeout} timeout - task state is {taskState}",
-                            timeout, _workerTask.Status);
+                        _logger.Warning($"Worker loop did not finish working within {timeout} timeout - task state is {_workerTask.Status}");
                     }
                 }
 

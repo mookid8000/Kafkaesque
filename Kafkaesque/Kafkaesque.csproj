@@ -10,8 +10,4 @@
     <WarningsAsErrors />
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="serilog" Version="2.8.0" />
-  </ItemGroup>
-
 </Project>
