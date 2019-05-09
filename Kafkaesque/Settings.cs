@@ -4,12 +4,31 @@ using System.Linq;
 
 namespace Kafkaesque
 {
+    /// <summary>
+    /// Configures how Kafkaesque should do its thing
+    /// </summary>
     public class Settings
     {
+        /// <summary>
+        /// Gets how long (in seconds) the writer should accept waiting to acquire the write lock.
+        /// </summary>
         public int WriteLockAcquisitionTimeoutSeconds { get; }
+
+        /// <summary>
+        /// Gets the approximate size (in bytes) of how big files can get. This is an approximate value, as contents will flow into a new file
+        /// whenever this value has been crossed, but – depending on the size of the written chunk of data – the file can end up slightly bigger
+        /// than this limit.
+        /// </summary>
         public long ApproximateMaximumFileLength { get; }
+
+        /// <summary>
+        /// Gets how many files Kafkaesque should aim to keep as history in the log directory.
+        /// </summary>
         public int NumberOfFilesToKeep { get; }
 
+        /// <summary>
+        /// Creates the settings
+        /// </summary>
         public Settings(
             int writeLockAcquisitionTimeoutSeconds = 20,
             long approximateMaximumFileLength = 10 * 1024 * 1024,

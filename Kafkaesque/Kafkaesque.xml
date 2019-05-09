@@ -9,12 +9,12 @@
             Create an instance of this one to get started with Kafkaesque
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogDirectory.#ctor(System.IO.DirectoryInfo)">
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.IO.DirectoryInfo,Kafkaesque.Settings)">
             <summary>
             Creates a log directory, using the directory specified by <paramref name="directoryInfo"/> to store the files.
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogDirectory.#ctor(System.String)">
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.String,Kafkaesque.Settings)">
             <summary>
             Creates a log directory, using the directory specified by <paramref name="directoryPath"/> to store the files.
             </summary>
@@ -70,16 +70,6 @@
             an <see cref="T:System.OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogReader.Read2(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
-            <summary>
-            Initiates a read operation. 
-            </summary>
-            <param name="fileNumber"></param>
-            <param name="bytePosition"></param>
-            <param name="cancellationToken"></param>
-            <param name="throwWhenCancelled"></param>
-            <returns></returns>
-        </member>
         <member name="T:Kafkaesque.LogWriter">
             <summary>
             Log writer for writing logs :)
@@ -98,6 +88,33 @@
         <member name="M:Kafkaesque.LogWriter.Dispose">
             <summary>
             Disposes the writer, giving the background writer task up to 3 s to finish writing
+            </summary>
+        </member>
+        <member name="T:Kafkaesque.Settings">
+            <summary>
+            Configures how Kafkaesque should do its thing
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.WriteLockAcquisitionTimeoutSeconds">
+            <summary>
+            Gets how long (in seconds) the writer should accept waiting to acquire the write lock.
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.ApproximateMaximumFileLength">
+            <summary>
+            Gets the approximate size (in bytes) of how big files can get. This is an approximate value, as contents will flow into a new file
+            whenever this value has been crossed, but – depending on the size of the written chunk of data – the file can end up slightly bigger
+            than this limit.
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.NumberOfFilesToKeep">
+            <summary>
+            Gets how many files Kafkaesque should aim to keep as history in the log directory.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.Settings.#ctor(System.Int32,System.Int64,System.Int32)">
+            <summary>
+            Creates the settings
             </summary>
         </member>
     </members>
