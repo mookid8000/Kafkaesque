@@ -28,6 +28,8 @@ namespace Kafkaesque
             _directoryPath = directoryPath ?? throw new ArgumentNullException(nameof(directoryPath), "Please pass a directory path to the log directory");
             _settings = settings ?? new Settings();
 
+            _settings.Validate();
+
             if (!Directory.Exists(directoryPath))
             {
                 CreateLogDirectory(directoryPath);

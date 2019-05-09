@@ -33,6 +33,11 @@ namespace Kafkaesque.Internals
             _files.Add(FileSnap.Create(filePath));
         }
 
+        public void RemoveFile(FileSnap file)
+        {
+            _files.Remove(file);
+        }
+
         static List<FileSnap> GetFiles(string directoryPath)
         {
             try

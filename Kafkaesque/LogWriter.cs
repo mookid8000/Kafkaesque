@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Serilog;
 // ReSharper disable InvertIf
 // ReSharper disable MethodSupportsCancellation
 // ReSharper disable ArgumentsStyleLiteral
+#pragma warning disable 1998
 #pragma warning disable 4014
 
 namespace Kafkaesque
@@ -27,6 +29,7 @@ namespace Kafkaesque
         readonly string _directoryPath;
         readonly Settings _settings;
         readonly Task _workerTask;
+        readonly Task _cleanerTask;
         readonly ILogger _logger;
 
         StreamWriter _currentWriter;
@@ -43,7 +46,8 @@ namespace Kafkaesque
 
             AcquireLockFile(directoryPath, cancellationToken, settings.WriteLockAcquisitionTimeoutSeconds);
 
-            _workerTask = Task.Run(Run);
+            _workerTask = Task.Run(RunWorker);
+            _cleanerTask = Task.Run(RunCleaner);
         }
 
         /// <summary>
@@ -88,7 +92,49 @@ namespace Kafkaesque
             throw new InvalidOperationException(message);
         }
 
-        async Task Run()
+        async Task RunCleaner()
+        {
+            // skip this for now
+            return;
+            var cancellationToken = _cancellationTokenSource.Token;
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+
+                    try
+                    {
+                        var dirSnap = new DirSnap(_directoryPath);
+                        var filesToRemove = dirSnap.GetFiles().Skip(_settings.NumberOfFilesToKeep).ToList();
+
+                        foreach (var file in filesToRemove)
+                        {
+                            await DeleteFile(file, cancellationToken);
+                        }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // ok
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.Warning(exception, "Error when cleaning up old files");
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // ok
+            }
+            catch (Exception exception)
+            {
+                _logger.Error(exception, "Unhandled exception, cleaner loop failed");
+            }
+        }
+
+        async Task RunWorker()
         {
             var cancellationToken = _cancellationTokenSource.Token;
 
@@ -219,6 +265,22 @@ namespace Kafkaesque
                         var nextFilePath = dirSnap.GetFilePath(nextFileNumber);
                         dirSnap.RegisterFile(nextFilePath);
 
+                        var allFiles = dirSnap.GetFiles().ToList();
+                        while (allFiles.Count > _settings.NumberOfFilesToKeep)
+                        {
+                            try
+                            {
+                                var file = allFiles.First();
+                                File.Delete(file.FilePath);
+                                dirSnap.RemoveFile(file);
+                                _logger.Verbose("Deleted file {filePath}", file.FilePath);
+                            }
+                            catch
+                            {
+                                break;
+                            }
+                        }
+
                         _approxBytesWritten = 0;
                         _currentWriter = GetWriter(nextFilePath);
                     }
@@ -263,6 +325,20 @@ namespace Kafkaesque
             }
 
             throw new TimeoutException($"Could not acquire lock file '{lockFilePath}' within {timeout} timeout");
+        }
+
+        async Task DeleteFile(FileSnap file, CancellationToken cancellationToken)
+        {
+            var filePath = file.FilePath;
+            try
+            {
+                File.Delete(filePath);
+                _logger.Verbose("Deleted file {filePath}", filePath);
+            }
+            catch (Exception exception)
+            {
+                throw new IOException($"Could not delete file {filePath}", exception);
+            }
         }
 
         StreamWriter GetWriter(string filePath)
