@@ -70,16 +70,6 @@
             an <see cref="T:System.OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogReader.Read2(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
-            <summary>
-            Initiates a read operation. 
-            </summary>
-            <param name="fileNumber"></param>
-            <param name="bytePosition"></param>
-            <param name="cancellationToken"></param>
-            <param name="throwWhenCancelled"></param>
-            <returns></returns>
-        </member>
         <member name="T:Kafkaesque.LogWriter">
             <summary>
             Log writer for writing logs :)
