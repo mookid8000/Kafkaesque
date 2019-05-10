@@ -4,17 +4,62 @@
         <name>Kafkaesque</name>
     </assembly>
     <members>
+        <member name="T:Kafkaesque.ILogger">
+            <summary>
+            Implement to catch logs from Kafkaesque
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Verbose(System.String)">
+            <summary>
+            Logs at the most verbose level
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Verbose(System.Exception,System.String)">
+            <summary>
+            Logs at the most verbose level
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Information(System.String)">
+            <summary>
+            Logs information
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Information(System.Exception,System.String)">
+            <summary>
+            Logs information
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Warning(System.String)">
+            <summary>
+            Logs a warning
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Warning(System.Exception,System.String)">
+            <summary>
+            Logs a warning
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Error(System.String)">
+            <summary>
+            Logs an error
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.ILogger.Error(System.Exception,System.String)">
+            <summary>
+            Logs an error
+            </summary>
+        </member>
         <member name="T:Kafkaesque.LogDirectory">
             <summary>
             Create an instance of this one to get started with Kafkaesque
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogDirectory.#ctor(System.IO.DirectoryInfo)">
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.IO.DirectoryInfo,Kafkaesque.Settings)">
             <summary>
             Creates a log directory, using the directory specified by <paramref name="directoryInfo"/> to store the files.
             </summary>
         </member>
-        <member name="M:Kafkaesque.LogDirectory.#ctor(System.String)">
+        <member name="M:Kafkaesque.LogDirectory.#ctor(System.String,Kafkaesque.Settings)">
             <summary>
             Creates a log directory, using the directory specified by <paramref name="directoryPath"/> to store the files.
             </summary>
@@ -88,6 +133,38 @@
         <member name="M:Kafkaesque.LogWriter.Dispose">
             <summary>
             Disposes the writer, giving the background writer task up to 3 s to finish writing
+            </summary>
+        </member>
+        <member name="T:Kafkaesque.Settings">
+            <summary>
+            Configures how Kafkaesque should do its thing
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.WriteLockAcquisitionTimeoutSeconds">
+            <summary>
+            Gets how long (in seconds) the writer should accept waiting to acquire the write lock.
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.ApproximateMaximumFileLength">
+            <summary>
+            Gets the approximate size (in bytes) of how big files can get. This is an approximate value, as contents will flow into a new file
+            whenever this value has been crossed, but – depending on the size of the written chunk of data – the file can end up slightly bigger
+            than this limit.
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.NumberOfFilesToKeep">
+            <summary>
+            Gets how many files Kafkaesque should aim to keep as history in the log directory.
+            </summary>
+        </member>
+        <member name="P:Kafkaesque.Settings.Logger">
+            <summary>
+            Gets the logger to use for logging
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.Settings.#ctor(System.Int32,System.Int64,System.Int32,Kafkaesque.ILogger)">
+            <summary>
+            Creates the settings
             </summary>
         </member>
     </members>

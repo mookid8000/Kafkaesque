@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+// ReSharper disable ArgumentsStyleLiteral
 
 // ReSharper disable ObjectCreationAsStatement
 // ReSharper disable UnusedVariable
@@ -39,7 +40,7 @@ namespace Kafkaesque.Tests
         public void CannotCreateMoreThanOneWriter()
         {
             var logDirectoryPath = GetLogDirectoryPath();
-            var log = new LogDirectory(logDirectoryPath);
+            var log = new LogDirectory(logDirectoryPath, new Settings(writeLockAcquisitionTimeoutSeconds: 3));
             var writer = log.GetWriter();
 
             Using(writer);
