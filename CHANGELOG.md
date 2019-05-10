@@ -9,6 +9,6 @@
 * Ability to configure a few things
 * Can delete files now
 
-## 0.0.6
+## 0.0.7
 
 * Remove Serilog dependency
