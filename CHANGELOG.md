@@ -12,3 +12,7 @@
 ## 0.0.7
 
 * Remove Serilog dependency
+
+## 0.0.8
+
+* Just push new version
