@@ -15,6 +15,9 @@ namespace Kafkaesque
     /// </summary>
     public class LogReader
     {
+        /// <summary>
+        /// Special EOF object returned from <see cref="ReadEof"/> whenever no more events could be read
+        /// </summary>
         public static readonly object EOF = new object();
 
         readonly string _directoryPath;
