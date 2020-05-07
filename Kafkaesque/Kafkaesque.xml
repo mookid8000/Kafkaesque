@@ -113,6 +113,15 @@
             Initiates a read operation. Optionally resumes from a specific file number/byte position.
             Reading is cancelled when the <paramref name="cancellationToken"/> is signaled. If <paramref name="throwWhenCancelled"/> is true,
             an <see cref="T:System.OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
+            Otherwise, reading will proceed, possibly waiting forever (with small thread pauses) for new events.
+            </summary>
+        </member>
+        <member name="M:Kafkaesque.LogReader.ReadEof(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
+            <summary>
+            Initiates a read operation. Optionally resumes from a specific file number/byte position.
+            Reading is cancelled when the <paramref name="cancellationToken"/> is signaled. If <paramref name="throwWhenCancelled"/> is true,
+            an <see cref="T:System.OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
+            When no more events can be read, the special <see cref="F:Kafkaesque.LogReader.EOF"/> object is returned, leaving the decision of what to do to the caller.
             </summary>
         </member>
         <member name="T:Kafkaesque.LogWriter">
