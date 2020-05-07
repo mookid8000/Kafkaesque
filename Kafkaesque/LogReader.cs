@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Kafkaesque.Internals;
+// ReSharper disable ArgumentsStyleLiteral
+// ReSharper disable ArgumentsStyleNamedExpression
 
 namespace Kafkaesque
 {
@@ -12,6 +15,8 @@ namespace Kafkaesque
     /// </summary>
     public class LogReader
     {
+        public static readonly object EOF = new object();
+
         readonly string _directoryPath;
         readonly Settings _settings;
         readonly ILogger _logger;
@@ -27,8 +32,25 @@ namespace Kafkaesque
         /// Initiates a read operation. Optionally resumes from a specific file number/byte position.
         /// Reading is cancelled when the <paramref name="cancellationToken"/> is signaled. If <paramref name="throwWhenCancelled"/> is true,
         /// an <see cref="OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
+        /// Otherwise, reading will proceed, possibly waiting forever (with small thread pauses) for new events.
         /// </summary>
         public IEnumerable<LogEvent> Read(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
+        {
+            return ReadInternal(fileNumber, bytePosition, cancellationToken, throwWhenCancelled, pauseOnEof: true).OfType<LogEvent>();
+        }
+
+        /// <summary>
+        /// Initiates a read operation. Optionally resumes from a specific file number/byte position.
+        /// Reading is cancelled when the <paramref name="cancellationToken"/> is signaled. If <paramref name="throwWhenCancelled"/> is true,
+        /// an <see cref="OperationCanceledException"/> is thrown upon cancellation - if it's false, then the iterator simply breaks.
+        /// When no more events can be read, the special <see cref="EOF"/> object is returned, leaving the decision of what to do to the caller.
+        /// </summary>
+        public IEnumerable<object> ReadEof(int fileNumber = -1, int bytePosition = -1, CancellationToken cancellationToken = default, bool throwWhenCancelled = false)
+        {
+            return ReadInternal(fileNumber, bytePosition, cancellationToken, throwWhenCancelled, pauseOnEof: false);
+        }
+
+        IEnumerable<object> ReadInternal(int fileNumber, int bytePosition, CancellationToken cancellationToken, bool throwWhenCancelled, bool pauseOnEof)
         {
             if (fileNumber < -1) throw new ArgumentOutOfRangeException(nameof(fileNumber), fileNumber, "Please pass either -1 (to start reading from the beginning) or an actual file number");
             if (bytePosition < -1) throw new ArgumentOutOfRangeException(nameof(bytePosition), bytePosition, "Please pass either -1 (to start reading from the beginning) or an actual byte position");
@@ -53,7 +75,15 @@ namespace Kafkaesque
 
                 if (!canRead)
                 {
-                    Thread.Sleep(1000);
+                    if (pauseOnEof)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        yield return EOF;
+                    }
+
                     continue;
                 }
 
@@ -71,7 +101,15 @@ namespace Kafkaesque
 
                 if (didReadEvents)
                 {
-                    Thread.Sleep(300);
+                    if (pauseOnEof)
+                    {
+                        Thread.Sleep(300);
+                    }
+                    else
+                    {
+                        yield return EOF;
+                    }
+
                     continue;
                 }
 
@@ -79,7 +117,15 @@ namespace Kafkaesque
 
                 if (!nextCanRead)
                 {
-                    Thread.Sleep(1000);
+                    if (pauseOnEof)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        yield return EOF;
+                    }
+
                     continue;
                 }
 
