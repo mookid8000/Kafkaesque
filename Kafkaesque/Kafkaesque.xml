@@ -108,6 +108,11 @@
             Log reader for reading logs :)
             </summary>
         </member>
+        <member name="F:Kafkaesque.LogReader.EOF">
+            <summary>
+            Special EOF object returned from <see cref="M:Kafkaesque.LogReader.ReadEof(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)"/> whenever no more events could be read
+            </summary>
+        </member>
         <member name="M:Kafkaesque.LogReader.Read(System.Int32,System.Int32,System.Threading.CancellationToken,System.Boolean)">
             <summary>
             Initiates a read operation. Optionally resumes from a specific file number/byte position.
